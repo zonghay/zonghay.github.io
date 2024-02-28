@@ -1,3 +1,0 @@
-User-agent: *
-Disallow:
-Sitemap: https://zonghay.github.io/sitemap.xml
