@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom" xmlns:content="http://purl.org/rss/1.0/modules/content/">
+  <channel>
+    <title>Nginx on ZhangYong&#39;s Blog</title>
+    <link>https://zonghay.github.io/tags/nginx/</link>
+    <description>Recent content in Nginx on ZhangYong&#39;s Blog</description>
+    <generator>Hugo -- gohugo.io</generator>
+    <language>zh</language>
+    <lastBuildDate>Wed, 13 Nov 2019 11:09:04 +0800</lastBuildDate>
+    <atom:link href="https://zonghay.github.io/tags/nginx/index.xml" rel="self" type="application/rss+xml" />
+    <item>
+      <title>记一次调试nginx vhost的低能操作</title>
+      <link>https://zonghay.github.io/archives/%E8%AE%B0%E4%B8%80%E6%AC%A1%E8%B0%83%E8%AF%95nginx_vhost%E7%9A%84%E4%BD%8E%E8%83%BD%E6%93%8D%E4%BD%9C/</link>
+      <pubDate>Wed, 13 Nov 2019 11:09:04 +0800</pubDate>
+      <guid>https://zonghay.github.io/archives/%E8%AE%B0%E4%B8%80%E6%AC%A1%E8%B0%83%E8%AF%95nginx_vhost%E7%9A%84%E4%BD%8E%E8%83%BD%E6%93%8D%E4%BD%9C/</guid>
+      <description>最近在学习Fast-CGI的协议具体内容，用到TCPDUMP来抓一下nginx发给php-fpm的tcp包。于是自己就要在MAC上搭一个简单的环境，跑个小demo。nginx，php咱都有，回来配个nginx的vhost就成了，谁知道最后在vhost上折腾了半天。难顶。 由于之前的</description>
+    </item>
+  </channel>
+</rss>

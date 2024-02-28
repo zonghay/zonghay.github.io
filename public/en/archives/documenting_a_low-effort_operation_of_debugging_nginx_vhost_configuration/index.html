@@ -1,0 +1,421 @@
+<!DOCTYPE html>
+<html lang="en" dir="auto">
+
+<head><meta charset="utf-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+<meta name="robots" content="index, follow">
+<title>Documenting a low-effort operation of debugging an Nginx vHost configuration. | ZhangYong&#39;s Blog</title>
+<meta name="keywords" content="">
+<meta name="description" content="Recently, I&rsquo;ve been studying the specifics of the Fast-CGI protocol and used TCPDUMP to capture the TCP packets sent from Nginx to PHP-FPM. So, I set up a simple environment on my MAC to run a small demo. I already had Nginx and PHP, just had to configure an Nginx vhost and it should be done, but who knew I&rsquo;d spend half a day messing with the vhost. Tough times. Since all my previous Nginx configurations were done on virtual machines provided by the company, it was just a matter of copying a conf file from a previous project, changing the root path and server_name, and then reloading. Having read the Nginx manual, I understood the roles of the http, server, and location modules, as well as some configurations, so I decided to write one myself. First, I wrote a">
+<meta name="author" content="zonghay">
+<link rel="canonical" href="https://zonghay.github.io/en/archives/documenting_a_low-effort_operation_of_debugging_nginx_vhost_configuration/">
+<link crossorigin="anonymous" href="/assets/css/stylesheet.dcfb163a26f6d3424ebc508b6b5f0c1a0e7a3f03d9ed64a2f08a4036e70ca09d.css" integrity="sha256-3PsWOib200JOvFCLa18MGg56PwPZ7WSi8IpANucMoJ0=" rel="preload stylesheet" as="style">
+<link rel="icon" href="https://zonghay.github.io/favicon.ico">
+<link rel="icon" type="image/png" sizes="16x16" href="https://zonghay.github.io/favicon-16x16.png">
+<link rel="icon" type="image/png" sizes="32x32" href="https://zonghay.github.io/favicon-32x32.png">
+<link rel="apple-touch-icon" href="https://zonghay.github.io/apple-touch-icon.png">
+<link rel="mask-icon" href="https://zonghay.github.io/safari-pinned-tab.svg">
+<meta name="theme-color" content="#2e2e33">
+<meta name="msapplication-TileColor" content="#2e2e33">
+<link rel="alternate" hreflang="en" href="https://zonghay.github.io/en/archives/documenting_a_low-effort_operation_of_debugging_nginx_vhost_configuration/">
+<noscript>
+    <style>
+        #theme-toggle,
+        .top-link {
+            display: none;
+        }
+
+    </style>
+    <style>
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --theme: rgb(29, 30, 32);
+                --entry: rgb(46, 46, 51);
+                --primary: rgb(218, 218, 219);
+                --secondary: rgb(155, 156, 157);
+                --tertiary: rgb(65, 66, 68);
+                --content: rgb(196, 196, 197);
+                --code-block-bg: rgb(46, 46, 51);
+                --code-bg: rgb(55, 56, 62);
+                --border: rgb(51, 51, 51);
+            }
+
+            .list {
+                background: var(--theme);
+            }
+
+            .list:not(.dark)::-webkit-scrollbar-track {
+                background: 0 0;
+            }
+
+            .list:not(.dark)::-webkit-scrollbar-thumb {
+                border-color: var(--theme);
+            }
+        }
+
+    </style>
+</noscript><meta property="og:title" content="Documenting a low-effort operation of debugging an Nginx vHost configuration." />
+<meta property="og:description" content="Recently, I&rsquo;ve been studying the specifics of the Fast-CGI protocol and used TCPDUMP to capture the TCP packets sent from Nginx to PHP-FPM. So, I set up a simple environment on my MAC to run a small demo. I already had Nginx and PHP, just had to configure an Nginx vhost and it should be done, but who knew I&rsquo;d spend half a day messing with the vhost. Tough times. Since all my previous Nginx configurations were done on virtual machines provided by the company, it was just a matter of copying a conf file from a previous project, changing the root path and server_name, and then reloading. Having read the Nginx manual, I understood the roles of the http, server, and location modules, as well as some configurations, so I decided to write one myself. First, I wrote a" />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="https://zonghay.github.io/en/archives/documenting_a_low-effort_operation_of_debugging_nginx_vhost_configuration/" /><meta property="article:section" content="archives" />
+<meta property="article:published_time" content="2019-11-13T11:09:04+08:00" />
+<meta property="article:modified_time" content="2019-11-13T11:09:04+08:00" />
+
+<meta name="twitter:card" content="summary"/>
+<meta name="twitter:title" content="Documenting a low-effort operation of debugging an Nginx vHost configuration."/>
+<meta name="twitter:description" content="Recently, I&rsquo;ve been studying the specifics of the Fast-CGI protocol and used TCPDUMP to capture the TCP packets sent from Nginx to PHP-FPM. So, I set up a simple environment on my MAC to run a small demo. I already had Nginx and PHP, just had to configure an Nginx vhost and it should be done, but who knew I&rsquo;d spend half a day messing with the vhost. Tough times. Since all my previous Nginx configurations were done on virtual machines provided by the company, it was just a matter of copying a conf file from a previous project, changing the root path and server_name, and then reloading. Having read the Nginx manual, I understood the roles of the http, server, and location modules, as well as some configurations, so I decided to write one myself. First, I wrote a"/>
+
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [
+    {
+      "@type": "ListItem",
+      "position":  1 ,
+      "name": "",
+      "item": "https://zonghay.github.io/en/archives/"
+    }, 
+    {
+      "@type": "ListItem",
+      "position":  2 ,
+      "name": "Documenting a low-effort operation of debugging an Nginx vHost configuration.",
+      "item": "https://zonghay.github.io/en/archives/documenting_a_low-effort_operation_of_debugging_nginx_vhost_configuration/"
+    }
+  ]
+}
+</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "Documenting a low-effort operation of debugging an Nginx vHost configuration.",
+  "name": "Documenting a low-effort operation of debugging an Nginx vHost configuration.",
+  "description": "Recently, I\u0026rsquo;ve been studying the specifics of the Fast-CGI protocol and used TCPDUMP to capture the TCP packets sent from Nginx to PHP-FPM. So, I set up a simple environment on my MAC to run a small demo. I already had Nginx and PHP, just had to configure an Nginx vhost and it should be done, but who knew I\u0026rsquo;d spend half a day messing with the vhost. Tough times. Since all my previous Nginx configurations were done on virtual machines provided by the company, it was just a matter of copying a conf file from a previous project, changing the root path and server_name, and then reloading. Having read the Nginx manual, I understood the roles of the http, server, and location modules, as well as some configurations, so I decided to write one myself. First, I wrote a",
+  "keywords": [
+    ""
+  ],
+  "articleBody": "Recently, I’ve been studying the specifics of the Fast-CGI protocol and used TCPDUMP to capture the TCP packets sent from Nginx to PHP-FPM. So, I set up a simple environment on my MAC to run a small demo. I already had Nginx and PHP, just had to configure an Nginx vhost and it should be done, but who knew I’d spend half a day messing with the vhost. Tough times.\nSince all my previous Nginx configurations were done on virtual machines provided by the company, it was just a matter of copying a conf file from a previous project, changing the root path and server_name, and then reloading.\nHaving read the Nginx manual, I understood the roles of the http, server, and location modules, as well as some configurations, so I decided to write one myself.\nFirst, I wrote a test.php file in /Users/zonghay/www/, and then configured the vhost to see the effect.\nMy first server configuration was as follows:\nserver { listen 8848; server_name localhost; location / { root /Users/zonghay/www/; index index.html index.htm; } } Accessing http://localhost:8848 in the browser, I encountered a 404 error. A 404 error means something couldn’t be found. But what exactly? After thinking for a while, I realized that I wrote a test.php file, but the Nginx configuration was looking for index.html and index.htm. I quickly changed the PHP file name and updated the Nginx configuration file to this:\nserver { listen 8848; server_name localhost; location / { root /Users/zonghay/www/; index index.html index.htm index.php; } } Restart Nginx and send a request. This time it wasn’t a 404, but a blank page, and instead of displaying anything, it downloaded the index.php file. Eh, why is that? After a Bing search, I found out that when Nginx matches the index.php file, it realizes it’s not an HTML resource, so it returns the file with a content-type of application/octet-stream. We can see the HTTP response in the F12 developer tools.\nHTTP/1.1 200 OK Server: nginx/1.17.3 Date: Wed, 13 Nov 2019 13:25:25 GMT Last-Modified: Wed, 13 Nov 2019 13:23:34 GMT Content-Type: application/octet-stream Content-Length: 18 ETag: “5dcc03d6-12” Accept-Ranges: bytes\nBut how to solve this? Of course, you need to tell Nginx to hand over the file to someone else for processing. So, let’s continue building the wall, add a location block to match PHP files, and tell Nginx to hand the file over to PHP-FPM listening on port 9000 of the local machine.\nserver { listen 8848; server_name localhost; location / { root /Users/zonghay/www/; index index.html index.htm index.php; } location ~ .*\\.php$ { fastcgi_pass 127.0.0.1:9000; } } Continue with the restart and refresh.\nWith full of anticipation, I found that it was neither a 404 nor a download this time, but a blank page. I was devastated. But after calming down and analyzing it, why didn’t it return anything? It could be that PHP-FPM didn’t process the file or didn’t process it correctly, returning empty. After carefully comparing my virtual machine’s vhost configuration with this season’s configuration, I realized I might have made a basic mistake. As we all know, what is the full name of PHP-FPM? It’s called PHP Fast-CGI Manager, an application that implements the Fast-CGI protocol. You tell Nginx to process the file, but you don’t tell it what protocol to use. It’s like going to a restaurant, carrying meat and asking them to stir-fry a dish, but if you don’t say what dish, they’ll definitely ignore you. So, I Binged and compared the differences between the two configuration files, and wrote a final version.\nserver { listen 8848; server_name localhost; root /Users/zonghay/www/; index index.html index.htm index.php; location ~ .*\\.php$ { include fastcgi_params; fastcgi_pass 127.0.0.1:9000; fastcgi_index index.php; } } The included fastcgi_params file contains the necessary K-V key-value pairs for the Fast-CGI protocol. As for the functions of these key-value pairs, I will write another article after I finish researching the Fast-CGI protocol. Finally, my little demo ran successfully with some scares, but seeing the words “Hello World” on the screen, I felt quite embarrassed. I’ve been working for a year, and I can still make such a basic mistake in Nginx configuration.\n",
+  "wordCount" : "688",
+  "inLanguage": "en",
+  "datePublished": "2019-11-13T11:09:04+08:00",
+  "dateModified": "2019-11-13T11:09:04+08:00",
+  "author":[{
+    "@type": "Person",
+    "name": "zonghay"
+  }],
+  "mainEntityOfPage": {
+    "@type": "WebPage",
+    "@id": "https://zonghay.github.io/en/archives/documenting_a_low-effort_operation_of_debugging_nginx_vhost_configuration/"
+  },
+  "publisher": {
+    "@type": "Organization",
+    "name": "ZhangYong's Blog",
+    "logo": {
+      "@type": "ImageObject",
+      "url": "https://zonghay.github.io/favicon.ico"
+    }
+  }
+}
+</script>
+</head>
+
+<body class="" id="top">
+<script>
+    if (localStorage.getItem("pref-theme") === "dark") {
+        document.body.classList.add('dark');
+    } else if (localStorage.getItem("pref-theme") === "light") {
+        document.body.classList.remove('dark')
+    } else if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
+        document.body.classList.add('dark');
+    }
+
+</script>
+
+<header class="header">
+    <nav class="nav">
+        <div class="logo">
+            <a href="https://zonghay.github.io/en/" accesskey="h" title="ZhangYong&#39;s Blog (Alt + H)">ZhangYong&#39;s Blog</a>
+            <div class="logo-switches">
+                <button id="theme-toggle" accesskey="t" title="(Alt + T)">
+                    <svg id="moon" xmlns="http://www.w3.org/2000/svg" width="24" height="18" viewBox="0 0 24 24"
+                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round">
+                        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+                    </svg>
+                    <svg id="sun" xmlns="http://www.w3.org/2000/svg" width="24" height="18" viewBox="0 0 24 24"
+                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="5"></circle>
+                        <line x1="12" y1="1" x2="12" y2="3"></line>
+                        <line x1="12" y1="21" x2="12" y2="23"></line>
+                        <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+                        <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+                        <line x1="1" y1="12" x2="3" y2="12"></line>
+                        <line x1="21" y1="12" x2="23" y2="12"></line>
+                        <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+                        <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+                    </svg>
+                </button>
+                <ul class="lang-switch"><li>|</li>
+                    <li>
+                        <a href="https://zonghay.github.io/" title="简体中文"
+                            aria-label="简体中文">简体中文</a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+        <ul id="menu">
+            <li>
+                <a href="https://zonghay.github.io/en/" title="Home 🏠">
+                    <span>Home 🏠</span>
+                </a>
+            </li>
+            <li>
+                <a href="https://zonghay.github.io/en/archives/" title="Archives 📖">
+                    <span>Archives 📖</span>
+                </a>
+            </li>
+            <li>
+                <a href="https://zonghay.github.io/en/tags/" title="tags 🧩">
+                    <span>tags 🧩</span>
+                </a>
+            </li>
+            <li>
+                <a href="https://zonghay.github.io/en/search/" title="Search 🔍">
+                    <span>Search 🔍</span>
+                </a>
+            </li>
+            <li>
+                <a href="https://zonghay.github.io/en/about/" title="AboutMe 👀">
+                    <span>AboutMe 👀</span>
+                </a>
+            </li>
+            <li>
+                <a href="https://github.com/zonghay" title="Github">
+                    <span>Github</span>&nbsp;
+                    <svg fill="none" shape-rendering="geometricPrecision" stroke="currentColor" stroke-linecap="round"
+                        stroke-linejoin="round" stroke-width="2.5" viewBox="0 0 24 24" height="12" width="12">
+                        <path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"></path>
+                        <path d="M15 3h6v6"></path>
+                        <path d="M10 14L21 3"></path>
+                    </svg>
+                </a>
+            </li>
+        </ul>
+    </nav>
+</header>
+<main class="main">
+
+<article class="post-single">
+  <header class="post-header">
+    
+    <h1 class="post-title entry-hint-parent">
+      Documenting a low-effort operation of debugging an Nginx vHost configuration.
+    </h1>
+    <div class="post-meta"><span title='2019-11-13 11:09:04 +0800 CST'>November 13, 2019</span>&nbsp;·&nbsp;2 min&nbsp;·&nbsp;688 words&nbsp;·&nbsp;zonghay
+
+</div>
+  </header> 
+
+  <div class="post-content"><p>Recently, I&rsquo;ve been studying the specifics of the Fast-CGI protocol and used TCPDUMP to capture the TCP packets sent from Nginx to PHP-FPM. So, I set up a simple environment on my MAC to run a small demo. I already had Nginx and PHP, just had to configure an Nginx vhost and it should be done, but who knew I&rsquo;d spend half a day messing with the vhost. Tough times.</p>
+<p>Since all my previous Nginx configurations were done on virtual machines provided by the company, it was just a matter of copying a conf file from a previous project, changing the root path and server_name, and then reloading.</p>
+<p>Having read the Nginx manual, I understood the roles of the http, server, and location modules, as well as some configurations, so I decided to write one myself.</p>
+<p>First, I wrote a test.php file in /Users/zonghay/www/, and then configured the vhost to see the effect.</p>
+<p>My first server configuration was as follows:</p>
+<pre tabindex="0"><code>server {
+        listen       8848;
+        server_name  localhost;
+       
+        location / {
+            root  /Users/zonghay/www/;
+            index  index.html index.htm;
+        }
+}
+</code></pre><p>Accessing http://localhost:8848 in the browser, I encountered a 404 error.
+A 404 error means something couldn&rsquo;t be found. But what exactly? After thinking for a while, I realized that I wrote a test.php file, but the Nginx configuration was looking for index.html and index.htm. I quickly changed the PHP file name and updated the Nginx configuration file to this:</p>
+<pre tabindex="0"><code>server {
+        listen       8848;
+        server_name  localhost;
+
+        location / {
+        	root  /Users/zonghay/www/;
+        	index  index.html index.htm index.php;
+        }
+}
+</code></pre><p>Restart Nginx and send a request.
+This time it wasn&rsquo;t a 404, but a blank page, and instead of displaying anything, it downloaded the index.php file. Eh, why is that?
+After a Bing search, I found out that when Nginx matches the index.php file, it realizes it&rsquo;s not an HTML resource, so it returns the file with a content-type of application/octet-stream. We can see the HTTP response in the F12 developer tools.</p>
+<blockquote>
+<p>HTTP/1.1 200 OK
+Server: nginx/1.17.3
+Date: Wed, 13 Nov 2019 13:25:25 GMT
+Last-Modified: Wed, 13 Nov 2019 13:23:34 GMT
+Content-Type: application/octet-stream
+Content-Length: 18
+ETag: &ldquo;5dcc03d6-12&rdquo;
+Accept-Ranges: bytes</p>
+</blockquote>
+<p>But how to solve this? Of course, you need to tell Nginx to hand over the file to someone else for processing. So, let&rsquo;s continue building the wall, add a location block to match PHP files, and tell Nginx to hand the file over to PHP-FPM listening on port 9000 of the local machine.</p>
+<pre tabindex="0"><code>server {
+        listen       8848;
+        server_name  localhost;
+
+        location / {
+        	root  /Users/zonghay/www/;
+        	index  index.html index.htm index.php;
+        }
+       
+        location ~ .*\.php$ {
+            fastcgi_pass 127.0.0.1:9000;
+        }
+}
+</code></pre><p>Continue with the restart and refresh.</p>
+<p>With full of anticipation, I found that it was neither a 404 nor a download this time, but a blank page. I was devastated. But after calming down and analyzing it, why didn&rsquo;t it return anything? It could be that PHP-FPM didn&rsquo;t process the file or didn&rsquo;t process it correctly, returning empty. After carefully comparing my virtual machine&rsquo;s vhost configuration with this season&rsquo;s configuration, I realized I might have made a basic mistake. As we all know, what is the full name of PHP-FPM? It&rsquo;s called PHP Fast-CGI Manager, an application that implements the Fast-CGI protocol. You tell Nginx to process the file, but you don&rsquo;t tell it what protocol to use. It&rsquo;s like going to a restaurant, carrying meat and asking them to stir-fry a dish, but if you don&rsquo;t say what dish, they&rsquo;ll definitely ignore you. So, I Binged and compared the differences between the two configuration files, and wrote a final version.</p>
+<pre tabindex="0"><code>server {
+        listen       8848;
+        server_name  localhost;
+        root  /Users/zonghay/www/;
+        index  index.html index.htm index.php;
+
+        location ~ .*\.php$ {
+            include fastcgi_params;
+            fastcgi_pass 127.0.0.1:9000;
+            fastcgi_index index.php;
+        }
+}
+</code></pre><p>The included fastcgi_params file contains the necessary K-V key-value pairs for the Fast-CGI protocol. As for the functions of these key-value pairs, I will write another article after I finish researching the Fast-CGI protocol. Finally, my little demo ran successfully with some scares, but seeing the words &ldquo;Hello World&rdquo; on the screen, I felt quite embarrassed. I&rsquo;ve been working for a year, and I can still make such a basic mistake in Nginx configuration.</p>
+
+
+  </div>
+
+  <footer class="post-footer">
+    <ul class="post-tags">
+      <li><a href="https://zonghay.github.io/en/tags/nginx/">Nginx</a></li>
+      <li><a href="https://zonghay.github.io/en/tags/php/">PHP</a></li>
+    </ul>
+
+  </footer>
+</article>
+    </main>
+    
+<footer class="footer">
+    <span>&copy; 2024 <a href="https://zonghay.github.io/en/">ZhangYong&#39;s Blog</a></span>
+    <span>
+        Powered by
+        <a href="https://gohugo.io/" rel="noopener noreferrer" target="_blank">Hugo</a> &
+        <a href="https://github.com/adityatelange/hugo-PaperMod/" rel="noopener" target="_blank">PaperMod</a>
+    </span>
+</footer>
+<a href="#top" aria-label="go to top" title="Go to Top (Alt + G)" class="top-link" id="top-link" accesskey="g">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 12 6" fill="currentColor">
+        <path d="M12 6H0l6-6z" />
+    </svg>
+</a>
+
+<script>
+    let menu = document.getElementById('menu')
+    if (menu) {
+        menu.scrollLeft = localStorage.getItem("menu-scroll-position");
+        menu.onscroll = function () {
+            localStorage.setItem("menu-scroll-position", menu.scrollLeft);
+        }
+    }
+
+    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+        anchor.addEventListener("click", function (e) {
+            e.preventDefault();
+            var id = this.getAttribute("href").substr(1);
+            if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+                document.querySelector(`[id='${decodeURIComponent(id)}']`).scrollIntoView({
+                    behavior: "smooth"
+                });
+            } else {
+                document.querySelector(`[id='${decodeURIComponent(id)}']`).scrollIntoView();
+            }
+            if (id === "top") {
+                history.replaceState(null, null, " ");
+            } else {
+                history.pushState(null, null, `#${id}`);
+            }
+        });
+    });
+
+</script>
+<script>
+    var mybutton = document.getElementById("top-link");
+    window.onscroll = function () {
+        if (document.body.scrollTop > 800 || document.documentElement.scrollTop > 800) {
+            mybutton.style.visibility = "visible";
+            mybutton.style.opacity = "1";
+        } else {
+            mybutton.style.visibility = "hidden";
+            mybutton.style.opacity = "0";
+        }
+    };
+
+</script>
+<script>
+    document.getElementById("theme-toggle").addEventListener("click", () => {
+        if (document.body.className.includes("dark")) {
+            document.body.classList.remove('dark');
+            localStorage.setItem("pref-theme", 'light');
+        } else {
+            document.body.classList.add('dark');
+            localStorage.setItem("pref-theme", 'dark');
+        }
+    })
+
+</script>
+<script>
+    document.querySelectorAll('pre > code').forEach((codeblock) => {
+        const container = codeblock.parentNode.parentNode;
+
+        const copybutton = document.createElement('button');
+        copybutton.classList.add('copy-code');
+        copybutton.innerHTML = 'copy';
+
+        function copyingDone() {
+            copybutton.innerHTML = 'copied!';
+            setTimeout(() => {
+                copybutton.innerHTML = 'copy';
+            }, 2000);
+        }
+
+        copybutton.addEventListener('click', (cb) => {
+            if ('clipboard' in navigator) {
+                navigator.clipboard.writeText(codeblock.textContent);
+                copyingDone();
+                return;
+            }
+
+            const range = document.createRange();
+            range.selectNodeContents(codeblock);
+            const selection = window.getSelection();
+            selection.removeAllRanges();
+            selection.addRange(range);
+            try {
+                document.execCommand('copy');
+                copyingDone();
+            } catch (e) { };
+            selection.removeRange(range);
+        });
+
+        if (container.classList.contains("highlight")) {
+            container.appendChild(copybutton);
+        } else if (container.parentNode.firstChild == container) {
+            
+        } else if (codeblock.parentNode.parentNode.parentNode.parentNode.parentNode.nodeName == "TABLE") {
+            
+            codeblock.parentNode.parentNode.parentNode.parentNode.parentNode.appendChild(copybutton);
+        } else {
+            
+            codeblock.parentNode.appendChild(copybutton);
+        }
+    });
+</script>
+</body>
+
+</html>
