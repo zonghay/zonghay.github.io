@@ -1,12 +1,8 @@
 ---
-title: "{{ replace .Name "-" " " | title }}"
+title: "{{ replace .Name "_" " " | title }}"
 date: {{ .Date }}
 lastmod: {{ .Date }}
-author: ["zonghay"]
-keywords:
--
-categories: # 没有分类界面可以不填写
-- 
+author: ["ZhangYong"]
 tags: # 标签
 - 
 description: ""
