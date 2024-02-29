@@ -40,10 +40,10 @@ jobs:
           && sudo dpkg -i ${{ runner.temp }}/hugo.deb
 #      - name: Install Dart Sass
 #        run: sudo snap install dart-sass
-      - name: Checkout
-        uses: actions/checkout@v4
-        with:
-          ref: themes/PaperMod
+#      - name: Checkout
+#        uses: actions/checkout@v4
+#        with:
+#          ref: themes/PaperMod
       - name: Setup Pages
         id: pages
         uses: actions/configure-pages@v4
