@@ -2,11 +2,11 @@
 title: "记一次调试nginx vhost的低能操作"
 date: 2019-11-13T11:09:04+08:00
 lastmod: 2019-11-13T11:09:04+08:00
-author: ["zonghay"]
+author: ["ZhangYong"]
 tags:
 - Nginx
 - PHP
-description: ""
+description: "nginx vhost"
 weight:
 slug: ""
 draft: false # 是否为草稿

@@ -2,7 +2,7 @@
 title: "Documenting a low-effort operation of debugging an Nginx vHost configuration."
 date: 2019-11-13T11:09:04+08:00
 lastmod: 2019-11-13T11:09:04+08:00
-author: ["zonghay"]
+author: ["ZhangYong"]
 keywords:
 -
 categories: # 没有分类界面可以不填写

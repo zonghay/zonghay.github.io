@@ -43,7 +43,7 @@ languages:
           url: /about/
           weight: 5
         - name: Github
-          url: https://github.com/zonghay
+          url: https://github.com/zonghay/zonghay.github.io
           weight: 6
     params:
       profileMode:
@@ -80,7 +80,7 @@ languages:
           url: about/
           weight: 5
         - name: Github
-          url: https://github.com/zonghay
+          url: https://github.com/zonghay/zonghay.github.io
           weight: 6
 
 outputs:
@@ -92,7 +92,7 @@ outputs:
 # 这里的参数会被代码以 .Site.Params 的形式读取
 params:
   env: production # to enable google analytics, opengraph, twitter-cards and schema.
-  description: ""
+  description: "个人博客，hugo，papermod，php, golang，mysql，微服务"
   author: ZhangYong
 
   defaultTheme: auto  # defaultTheme: light or  dark
