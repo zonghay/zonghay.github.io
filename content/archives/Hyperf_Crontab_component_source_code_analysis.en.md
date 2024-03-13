@@ -1,5 +1,5 @@
 ---
-title: "Hyperf/Crontab 组件源码解析"
+title: "Hyperf/Crontab Component Source Code Analysis"
 date: 2020-06-02T17:29:05+08:00
 lastmod: 2020-06-02T17:29:05+08:00
 author: ["ZhangYong"]
