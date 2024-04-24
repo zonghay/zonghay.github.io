@@ -32,21 +32,20 @@ cover:
 >前置阅读：[Hyperf/Process自定义进程使用文档](https://hyperf.wiki/#/zh-cn/process)
 >前置阅读：[Hyperf事件机制](https://hyperf.wiki/#/zh-cn/event)
 
-#### Introduction
-Previously, while working on a project, I used the Hyperf/Crontab component for second-level data cleansing. Recently, as I've been working on splitting scheduled tasks, I decided to go through the component source code to deepen my understanding and, at the same time, contemplate how to build a task scheduling feature based on Hyperf/Crontab. At its core, Crontab is a custom process that starts with the Server, so we will introduce it in two stages: startup and execution.
+#### 写在开头
+之前做项目用到了Hyperf/Crontab组件来进行秒级的数据清洗，最近又在做定时任务的拆分，于是就打算过一遍组件源码加深理解，顺便构思一下如何在此基础上搭建Hyperf/Crontab的任务调度功能。Crontab本质上是一个随Server启动的自定义进程，所以接下来我们将从启动和执行两个阶段来进行介绍。
 
-#### Timer Startup
-Given that Crontab is a process that starts with the Server, analyzing its lifecycle will inevitably involve the framework's startup. However, this article is not mainly about introducing the Hyperf framework startup source code, so we will briefly go over the framework startup code that involves the launch of custom processes.
+#### 定时器的启动
+由于Crontab是一个随着Server启动的进程，分析他的生命周期肯定会设计到框架的启动。但本文不是主要介绍Hyperf框架启动源码的，所以我们会简单的过一下涉及到自定义进程启动的框架启动代码。 当我们使用命令 php bin/hyperf.php start 启动hyperf时
 
-When we start Hyperf using the command php bin/hyperf.php start,
 ```php
 $application = $container->get(\Hyperf\Contract\ApplicationInterface::class);
 ```
-In the entry file hyperf.php, the framework will instantiate a Hyperf\Framework\ApplicationFactory instance and will scan all places annotated with @Command or defined with commands configuration, instantiating a Symfony\Component\Console\Application object (this is a Symfony Console command class used to define commands and trigger execution tasks). All the classes defined as command objects are registered into the $application object. Finally, in the entry file, it executes:
+在入口文件 hyperf.php 框架会实例化一个 Hyperf\Framework\ApplicationFactory 实例，同时会扫描一遍所有带 @Command 注解或者定义了 commands 配置的地方，实例化一个Symfony\Component\Console\Application对象 （这是一个Symfony的Console命令类用于定义命令触发执行的任务） 。将所有被定义为command的对象类注册到$application对象中，最后在入口文件执行
 ```php
 $application->run();
 ```
-It executes all the Command commands, including the Hyperf\Server\Command\StartServer service Server startup class. This class defines that if the received command parameters include start, then it will execute its logic, i.e., instantiate the Hyperf\Server\Server class according to the configuration in config/autoload/server.php. During this process, the BeforeMainServerStart event is triggered, and here we are about to enter the core stage of custom process startup.
+执行所有的Command命令，其中包括 Hyperf\Server\Command\StartServer 服务Server启动类。在这个类里面定义了如果接收到的命令参数包含 start 那么就会执行他的逻辑，即根据 config/autoload/server.php 的配置实例化Hyperf\Server\Server类，在这个过程中会触发BeforeMainServerStart事件，到这里我们即将进入自定义进程启动的核心阶段。
 ```php
 $serverProcesses = $serverConfig['processes'] ?? [];
         $processes = $this->config->get('processes', []);
@@ -60,14 +59,11 @@ $serverProcesses = $serverConfig['processes'] ?? [];
             }
         }
 ```
-The BootProcessListener listens for the trigger of the BeforeMainServerStart event and will retrieve all process classes annotated with @Process and defined in the processes configuration file, executing their isEnable and bind methods.
+BootProcessListener监听到BeforeMainServerStart事件的触发会拿到所有 @Process 和 定义在processes配置文件的进程类，执行他们的 isEnable 和 bind 方法。
 
-#### Timer Execution
-Above, we briefly introduced how custom processes start with the framework. Now, let's analyze the main character of this article, the Crontab custom process.
+#### 定时器的执行
+在上面我们对自定义进程是如何随框架启动的进行了简单的介绍，接下来我们对本文的主角Crontab自定义进程进行解析。 Hyperf文档介绍在使用Crontab之前需要在 config/autoload/processes.php 内注册一下 Hyperf\Crontab\Process\CrontabDispatcherProcess 自定义进程。那么我们就直接来看一下这个process类里面做了什么事情。 如果你对 Hyperf/Process 组件使用熟悉的话会知道，一个process类主要执行的逻辑都在 handle() 方法 内。
 
-According to the Hyperf documentation, before using Crontab, we need to register the Hyperf\Crontab\Process\CrontabDispatcherProcess custom process in config/autoload/processes.php. So let's directly examine what this process class does.
-
-If you're familiar with the Hyperf/Process component, you'd know that the primary logic of a process class is executed within the handle() method.
 ```php
 public function handle(): void
     {
@@ -82,13 +78,12 @@ public function handle(): void
         }
     }
 ```
-Inside the handle method, it first triggers a CrontabDispatcherStarted event, which currently has no listeners. Following that, there's a period of coroutine blocking; the first block duration is the number of seconds until the next whole minute, and the rest are 60 seconds each. The reason for using \Swoole\Coroutine::sleep instead of plain sleep() is because a custom process is by default a coroutine server.
+在handle内首先触发来一个 CrontabDispatcherStarted 事件，目前这个事件无人监听。接下来就是一段时间的协程阻塞，阻塞时间第一次为距离下一次整分钟的秒数，其余的都是60s。关于为什么要使用 \Swoole\Coroutine::sleep 而不是直接 sleep() ，是因为自定义进程默认是一个协程的Server。 接下来
 
-Next,
 ```php
 $crontabs = $this->scheduler->schedule();
 ```
-The method returns an SplQueue queue of Crontab objects that are scheduled to be executed in the current minute. An SplQueue is a doubly linked list that can be used as a queue in PHP, and it is part of the Standard PHP Library (SPL).
+返回一个当前这一分钟该执行的SplQueue队列，队列中的是Crontab对象
 ```
 object(Hyperf\Crontab\Crontab)#46164 (10) {
   ["name":protected]=>
@@ -126,16 +121,12 @@ object(Hyperf\Crontab\Crontab)#46164 (10) {
   }
 }
 ```
-The Crontab object contains crucial information that is particularly relevant for the execution of scheduled tasks:
+这个对象中记录了我们目前比较关注的两个关键信息：
 
 1. Execution Callback
 2. Execution Time
 
-Regarding how the Crontab object is generated, this will be explained later.
-
-Once the Crontab object is obtained, it is sent to the implementation class of StrategyInterface that is defined in config/autoload/dependencies.php to be dispatched. By default, the strategy specified is to execute the task in a Worker process.
-
-The StrategyInterface is responsible for determining how the cron job should be executed. The default implementation, which uses Worker processes, ensures that the cron jobs are handled by the available Worker processes in the server. This allows for efficient execution of scheduled tasks without blocking the main server process.
+关于这个crontab对象是如何生成的，这个我们在后面会介绍到。 在我们拿到crontab对象后，我们会把对象发送给在 config/autoload/dependencies.php 定义好的 StrategyInterface 的实现类来进行dispatch，默认指定的是Worker 进程执行策略。
 ```php
 $server = $this->serverFactory->getServer()->getServer();
         if ($server instanceof Server && $crontab->getExecuteTime() instanceof Carbon) {
@@ -147,19 +138,13 @@ $server = $this->serverFactory->getServer()->getServer();
             ), $workerId);
         }
 ```
-Aside from the Coroutine strategy, the dispatch method for the other strategies is similar - they all involve round-robin polling of Worker IDs to send a PipeMessage object via the sendMessage method. Additionally, the sendMessage method triggers the OnPipeMessage event. This event is listened to by the OnPipeMessageListener, which will execute the corresponding callback function based on the PipeMessage.
-
-The callback function is the Executor->execute method. Within this method, a Swoole\Timer::after is defined based on the attributes of the Crontab object. The timer is set to execute the callback after a certain number of seconds, as defined by the executeTime property of the Crontab.
-
-This setup allows for the deferred execution of tasks, where the PipeMessage sent to the Worker process tells it to wait for the specified time before executing the task. The use of Swoole's Timer::after ensures that the callback is executed after the delay, without blocking the process that set up the timer.
-
-This approach allows for efficient task scheduling and execution in an asynchronous, non-blocking manner, making use of the multi-process capabilities of Swoole to handle concurrent tasks across different Worker processes.
+除Coroutine策略外的dispatch方法是相同的，都是进程间轮训的向WorkID通过 sendMessage 发送 PipeMessage 对象，同时 sendMessage 方法会触发 OnPipeMessage 事件。该事件被 OnPipeMessageListener 监听，会根据 PipeMessage 执行对应的callback函数，即 Executor->execute' 。在该方法中会根据corntab对象的属性定义 Swoole\Timer::after ,根据corontab的executeTime属性定义多少秒后执行callback。
 ```php
 $callback && Timer::after($diff > 0 ? $diff * 1000 : 1, $callback);
 ```
-This essentially completes the execution of a second-level precision scheduled task.
+这样基本就完成了我们一个秒级定时任务的执行。
 
-Now let's return to the question of when the Crontab object is generated. We mentioned earlier that Crontab is essentially a custom process. According to the usage instructions of Hyperf/Process, all custom processes extend the Hyperf\Process\AbstractProcess. This class triggers the BeforeProcessHandle event when starting a SwooleProcess. During this event, it scans all the crontab configurations and annotations, parses these annotations to generate Crontab objects, and stores them in the crontabs property.
+现在我们回到上面那个关于crontab对象是什么时候生成的问题。我们说过Cornrab本质上就是一个自定义进程，那根据Hyperf/Process的使用说明，所有的自定义进程都继承了 Hyperf\Process\AbstractProcess ，这个类在启动SwooleProcess时会触发 BeforeProcessHandle 事件，在这个事件中会扫描所有的crontab配置和注解，将这些注解进行解析生成crontab对象，存储在crontabs属性中。
 ```php
 public function register(Crontab $crontab): bool
     {
@@ -171,6 +156,6 @@ public function register(Crontab $crontab): bool
     }
 ```
 
-The above is roughly the execution process of a crontab scheduled task. Of course, there are many execution details and individualized definition parameters for Contab that we haven't had the chance to introduce due to space limitations. Interested readers can study these in their own time. Below, I will also attach a diagram of the overall execution process and the relationships between the classes in Hyperf/Crontab, to facilitate reading the source code.
+以上大致就是一个crontab定时任务的执行流程，当然里面还有很多执行细节和Contab个性化的定义参数由于篇幅有限我们还没来得及介绍，感兴趣的同学可以私下进行阅读，下面我也附上来Hyperf/Crontab的整体执行流程类之间的关系图，方便大家对照着阅读源码。
 
 ![](/images/hyperf_crontab.png)
