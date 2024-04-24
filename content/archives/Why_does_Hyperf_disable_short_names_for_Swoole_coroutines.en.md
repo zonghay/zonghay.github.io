@@ -20,12 +20,6 @@ disableShare: true # 底部不显示分享栏
 hideSummary: false
 ShowWordCount: true
 ShowBreadCrumbs: true #顶部显示路径
-  cover:
-  image: "" #图片路径例如：posts/tech/123/123.png
-  zoom: # 图片大小，例如填写 50% 表示原图像的一半大小
-  caption: "" #图片底部描述
-  alt: ""
-  relative: false
 ---
 
 In the server requirements section of the official Hyperf documentation, it is mentioned:
