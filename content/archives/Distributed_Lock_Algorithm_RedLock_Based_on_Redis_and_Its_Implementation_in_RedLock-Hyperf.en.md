@@ -1,5 +1,5 @@
 ---
-title: "基于Redis的分布式锁算法RedLock及RedLock-Hyperf实现"
+title: "The RedLock algorithm for distributed locks based on Redis and its implementation in RedLock-Hyperf"
 date: 2021-03-18T17:46:51+08:00
 lastmod: 2021-03-18T17:46:51+08:00
 author: ["ZhangYong"]
