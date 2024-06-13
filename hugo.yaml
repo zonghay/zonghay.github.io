@@ -27,10 +27,10 @@ languages:
     weight: 1
     menu:
       main:
-        - name: Home 🏠
-          url: /
-          weight: 1
         - name: Archives 📖
+          url: /tags/all/
+          weight: 1
+        - name: TimeLine 🕙
           url: /archives/
           weight: 2
         - name: tags 🧩
@@ -64,20 +64,20 @@ languages:
     weight: 2
     menu:
       main:
-        - name: 主页 🏠
-          url: /
-          weight: 1
         - name: 文章 📖
-          url: archives/
+          url: /tags/all/
+          weight: 1
+        - name: 时间线 🕙
+          url: /archives/
           weight: 2
         - name: 分类 🧩
-          url: tags/
+          url: /tags/
           weight: 3
         - name: 搜索 🔍
-          url: search/
+          url: /search/
           weight: 4
         - name: 关于我 👀
-          url: about/
+          url: /about/
           weight: 5
         - name: Github
           url: https://github.com/zonghay/zonghay.github.io
@@ -130,9 +130,9 @@ params:
     imageHeight: 200
     buttons:
       - name: 文章 📖
-        url: archives/
+        url: /tags/all/
       - name: 关于我 👀
-        url: about/
+        url: /about/
 
   socialIcons: # optional
     - name: "github"

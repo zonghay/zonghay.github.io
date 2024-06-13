@@ -4,6 +4,7 @@ date: 2023-07-13T15:30:11+08:00
 lastmod: 2024-03-01T15:30:11+08:00
 author: ["ZhangYong"]
 tags: # 标签
+- ALL
 - PHP
 - PHP-Extension
 - Zend Engine

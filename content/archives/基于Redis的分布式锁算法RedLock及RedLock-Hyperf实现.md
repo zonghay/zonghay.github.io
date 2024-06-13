@@ -4,6 +4,7 @@ date: 2021-03-18T17:46:51+08:00
 lastmod: 2021-03-18T17:46:51+08:00
 author: ["ZhangYong"]
 tags: # 标签
+- ALL
 - PHP
 - Redis
 - SWOOLE

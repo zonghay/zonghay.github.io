@@ -4,7 +4,7 @@ date: {{ .Date }}
 lastmod: {{ .Date }}
 author: ["ZhangYong"]
 tags: # 标签
-- 
+- ALL
 description: ""
 weight:
 slug: ""

@@ -4,6 +4,7 @@ date: 2019-11-13T11:09:04+08:00
 lastmod: 2019-11-13T11:09:04+08:00
 author: ["ZhangYong"]
 tags:
+- ALL
 - Nginx
 - PHP
 description: "nginx vhost"

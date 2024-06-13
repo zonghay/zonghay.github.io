@@ -4,6 +4,7 @@ date: 2021-01-12T17:44:50+08:00
 lastmod: 2021-01-12T17:44:50+08:00
 author: ["ZhangYong"]
 tags: # 标签
+- ALL
 - PHP
 - SWOOLE
 - Hyperf
