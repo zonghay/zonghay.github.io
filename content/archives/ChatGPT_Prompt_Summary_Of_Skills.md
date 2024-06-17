@@ -180,11 +180,11 @@ Topic 2: The global economy
 
 CRISPE 分别代表以下含义：
 
-CR： Capacity and Role（能力与角色）。你希望 ChatGPT 扮演怎样的角色。
-I： Insight（洞察力），背景信息和上下文（坦率说来我觉得用 Context 更好）。
-S： Statement（指令），你希望 ChatGPT 做什么。
-P： Personality（个性），你希望 ChatGPT 以什么风格或方式回答你。
-E： Experiment（尝试），要求 ChatGPT 为你提供多个答案。
+* CR： Capacity and Role（能力与角色）。你希望 ChatGPT 扮演怎样的角色。
+* I： Insight（洞察力），背景信息和上下文（坦率说来我觉得用 Context 更好）。
+* S： Statement（指令），你希望 ChatGPT 做什么。
+* P： Personality（个性），你希望 ChatGPT 以什么风格或方式回答你。
+* E： Experiment（尝试），要求 ChatGPT 为你提供多个答案。
 
 # 参考 
 
