@@ -186,6 +186,8 @@ CRISPE 分别代表以下含义：
 * P： Personality（个性），你希望 ChatGPT 以什么风格或方式回答你。
 * E： Experiment（尝试），要求 ChatGPT 为你提供多个答案。
 
+![图片](/images/gpt_freamwork.png)
+
 # 参考 
 
 [Learning Prompt](https://learningprompt.wiki/zh-Hans/docs/chatGPT/tutorial-extras/chatGPT-prompt-framework)
