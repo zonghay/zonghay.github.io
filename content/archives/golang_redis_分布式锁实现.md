@@ -34,50 +34,55 @@ package lock
 import (
 	"context"
 	"errors"
-	"kg-chat-server/cache"
+	"cache"
 	"time"
 
 	"github.com/go-redis/redis/v8"
+	"github.com/google/uuid"
 )
 
-var defaultExpirationTime = 5 * time.Second
-
-const LuaCheckAndDelKey = `
+const (
+	DefaultExpirationTime = 5 * time.Second
+	LuaCheckAndDelKey     = `
 	if(redis.call('get',KEYS[1])==ARGV[1]) then
-	return redis.call('del',KEYS[1])
+		return redis.call('del',KEYS[1])
 	else
-	return 0
+		return 0
 	end
 `
+)
 
 type RedisLock struct {
 	key        string
 	val        string
 	expiration time.Duration
 	cli        *redis.Client
+	script     *redis.Script
 }
 
-func NewRedisLock(key, val string) *RedisLock {
+func NewRedisLock(key string) *RedisLock {
+	val := uuid.New().String()
+
 	return &RedisLock{
 		key:        key,
 		val:        val,
-		expiration: defaultExpirationTime,
+		expiration: DefaultExpirationTime,
 		cli:        cache.RedisV8Client,
+		script:     redis.NewScript(LuaCheckAndDelKey),
 	}
 }
 
-func (r *RedisLock) Lock() (bool, error) {
-	return r.cli.SetNX(context.Background(), r.key, r.val, r.expiration).Result()
+func (r *RedisLock) Lock(ctx context.Context) (bool, error) {
+	return r.cli.SetNX(ctx, r.key, r.val, r.expiration).Result()
 }
 
-func (r *RedisLock) Unlock() error {
-	script := redis.NewScript(LuaCheckAndDelKey)
-	res, err := script.Run(context.Background(), r.cli, []string{r.key}, r.val).Int64()
+func (r *RedisLock) Unlock(ctx context.Context) error {
+	res, err := r.script.Run(context.Background(), r.cli, []string{r.key}, r.val).Int64()
 	if err != nil {
 		return err
 	}
 	if res != 1 {
-		return errors.New("del lock failed")
+		return errors.New("unlock failed: the lock has been lost or the value does not match")
 	}
 	return nil
 }
