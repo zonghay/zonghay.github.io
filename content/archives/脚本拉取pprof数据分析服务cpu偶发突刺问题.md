@@ -28,16 +28,20 @@ cover:
     relative: false
 ---
 
-最近工作中遇到一个比较奇怪的问题，容器化部署的服务container会在不定时偶发CPU突刺，从而引发频繁动态扩容的问题。   
-由于服务是go开发的，所以准备让服务提供pprof接口来分析CPU的使用情况。     
-但由于CPU突刺是不定时的，并且网关一般都有读写超时配置。   
-所以我们不能一次拉取太长时间的pprof数据，需要通过shell脚本每分钟把数据转存到特定路径。最后再结合监控，运行
+最近工作中遇到一个比较奇怪的问题，容器化部署的服务container会在不定时偶发CPU突刺，从而引发频繁动态扩容。
+服务是go开发的，所以准备让服务提供pprof接口来分析CPU的使用情况。
+但由于CPU突刺是不定时的，并且网关一般都有请求读写超时配置。
+所以我们不能一次拉取太长时间的pprof数据，需要通过shell脚本每分钟把数据转存到特定路径。
+最后再结合出现问题时的pprof文件监控进行分析。   
+
+运行
 
 ```shell
 go tool pprof /tmp/dump/xxx.pprof
 ```
 
 查看对应时间服务CPU采样数据。    
+
 shell脚本如下：
 ```shell
 #!/bin/bash
@@ -69,3 +73,9 @@ done
 
 echo "Profiling completed."
 ```
+
+后续通过pprof生成的graph图，我们将问题定位到某段用于解析用户缓存数据的json.unmarshall代码处。     
+这里补充一个必要信息是，由于游戏刚上线，运维初期给我这个服务容器配置的资源较低，所以更容易引发CPU突刺。   
+由于问题处缓存的文本量较大且struct对象的类型也较为复杂，所以当稍微请求量多一些时，就会造成unmarshall占用更多计算资源。所以，后面我们决定给容器加资源并更改json包(valyala/fastjson)来解决此问题。
+
+参考：[深入 Go 中各个高性能 JSON 解析库](https://www.luozhiyun.com/archives/535)
