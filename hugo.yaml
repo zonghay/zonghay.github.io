@@ -121,9 +121,9 @@ params:
     enabled: true
     title: 欢迎来到我的个人空间
     subtitle: >
-      在这里我会分享编程相关的技术文章以及记录生活的一些点滴。  
+      在这里我会分享编程相关的技术文章以及记录一些想法。  
       
-      最后，随时欢迎你和我联系！
+      最后，期待与你的交流！
     imageUrl: "images/yoshi.png"
     imageTitle:
     imageWidth: 200
