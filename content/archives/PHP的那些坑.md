@@ -54,3 +54,8 @@ if (in_array($a, $arr)) {
 > 在内部，BCMath库将每个数字作为字符串处理，其中每个字符代表数字的一位。这样，数字的大小不再受到浮点数或整数类型的限制                 
 
 https://blog.csdn.net/qq_25123887/article/details/128233993
+
+## PHP的强等是===,Golang的强等是==
+https://www.php.net/manual/zh/language.operators.comparison.php
+
+## empty("0") return true
