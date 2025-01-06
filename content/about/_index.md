@@ -31,6 +31,8 @@ cover:
 同时落笔写作也是一个把知识「读厚、读薄」的过程。
 以此作为一种记录，多年后回看这些文章也许还能看出彼时自己的稚嫩和青涩。
 
+[**《我的技能树》**](https://p7fybgeqg9.feishu.cn/docx/BoDDd3EbOoUv99x4Z5ecaXVenQe?openbrd=1&doc_app_id=501&blockId=OJfgdx3qCoMv0ixM0GTcmrZvnMb&blockType=whiteboard&blockToken=PVlDwt5vYh3fp4bLLGwcwZ4CnQc#OJfgdx3qCoMv0ixM0GTcmrZvnMb)
+
 ### 兴趣爱好
 
 - 业余踢足球⚽️
