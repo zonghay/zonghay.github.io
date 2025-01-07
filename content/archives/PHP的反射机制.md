@@ -40,7 +40,7 @@ https://www.php.net/manual/zh/book.reflection.php
 * ReflectionZendExtension：特定于Zend引擎的扩展信息。
 
 ## PHPUnit中反射机制的使用
-PHPUnit 是一个广泛使用的 PHP 单元测试框架，它利用反射机制来实现许多高级功能。以下是如何在 PHPUnit 中应用反射机制的一些具体例子：
+PHPUnit 利用反射机制来实现许多高级功能，以下是在 PHPUnit 中应用反射机制的一些具体例子：
 ### 自动发现和加载测试用例
 PHPUnit 使用反射机制来自动发现和加载符合特定命名规范的测试类和方法。例如，任何以 Test 结尾的类，以及类中以 test 开头的方法，都会被识别为测试用例。
 ```php
@@ -120,4 +120,4 @@ class ExampleTest extends PHPUnit\Framework\TestCase {
 ## 其他应用反射机制的框架和库
 * Laravel 框架使用反射机制来实现依赖注入容器，动态解析类的依赖关系并实例化对象。（这可能也是造成Laravel性能偏低的原因之一）
 * Symfony 框架也利用反射机制来实现自动加载服务和组件，以及进行依赖注入。
-* Hyperf 是一个高性能的PHP框架，它使用反射机制来实现注解功能，从而简化配置和提高开发效率。
+* Hyperf 使用反射机制来实现注解功能，从而简化配置和提高开发效率。
