@@ -149,3 +149,5 @@ Zend内存池初始化时会申请一个主chunk，后续申请的chunk会以双
 [https://github.com/pangudashu/php7-internal/blob/master/5/gc.md](https://github.com/pangudashu/php7-internal/blob/master/5/gc.md)
 
 [https://github.com/pangudashu/php7-internal/blob/master/5/zend_alloc.md](https://github.com/pangudashu/php7-internal/blob/master/5/zend_alloc.md)
+
+[PHP的垃圾回收机制](https://blog.csdn.net/MrWangisgoodboy/article/details/130148349)
