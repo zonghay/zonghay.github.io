@@ -31,9 +31,9 @@ ShowBreadCrumbs: true #顶部显示路径
 
 如果你问Chat-GPT4，它会回答:
 
-> 编译型语言：PHP扩展通常使用C或C++编写，这些都是编译型语言，编译成机器码后执行效率高，可以直接操作硬件和内存。
-直接操作内核数据结构：PHP扩展可以直接访问和操作PHP内核的数据结构和API，避免了PHP脚本中一些额外的运行时开销，如变量查找、类型判断、内存分配等。
-优化的算法和数据结构：使用C或C++编写的PHP扩展可以利用更优化的算法和数据结构，例如使用高效的哈希表、树、图等数据结构，或者使用并行计算、矢量化计算等优化的算法。
+> 编译型语言：PHP扩展通常使用C或C++编写，这些都是编译型语言，编译成机器码后执行效率高，可以直接操作硬件和内存。        
+直接操作内核数据结构：PHP扩展可以直接访问和操作PHP内核的数据结构和API，避免了PHP脚本中一些额外的运行时开销，如变量查找、类型判断、内存分配等。       
+优化的算法和数据结构：使用C或C++编写的PHP扩展可以利用更优化的算法和数据结构，例如使用高效的哈希表、树、图等数据结构，或者使用并行计算、矢量化计算等优化的算法。     
 系统级操作：PHP扩展可以直接调用操作系统的API进行系统级的操作，比如文件操作、网络操作、进程管理等，这些操作通常比PHP脚本中的相应操作要高效。
 
 个人总结：程序执行阶段，拓展比应用层语言更贴近操作系统。
@@ -61,6 +61,8 @@ PHP可以理解成是一款用C/C++开发的应用，这款应用语法简单，
 * Parsing（语法分析）：接下来，这些标记会被组织成一种结构化的形式，通常是一棵抽象语法树（AST）。这一过程就是语法分析。在这个阶段，PHP会检查代码的语法是否正确，比如括号是否匹配，语句是否完整等。 yacc生成, 源文件在 Zend/zend_language_parser.y
 * Compilation（编译）：紧接着，抽象语法树会被转化为opcode。这一过程就是编译。编译过程中，PHP会进行一些优化，比如常量折叠（constant folding）、死代码消除（dead code elimination）等。 opcode定义的源文件在zend_vm_opcodes.h
 * Execution（执行）：最后，opcode会以op array的形式被Zend Engine顺序执行，完成实际的运算和操作。在这个阶段，PHP会进行函数调用、变量查找、表达式求值等操作。
+
+在PHP 8中增加的JIT编译器是作为Opcache的一部分提供的，JIT在Opcache优化后的基础上，结合运行时信息将热点代码（频繁执行的代码）编译成机器码，从而进一步提高执行速度。
 
 ### Token
 
@@ -123,20 +125,20 @@ PHP is the best language in the world.
 ```
 我们先来详细的看一下opcode表格里每一列的内容具体代表什么
 
-* line：这是源代码中的行号。例如，第一个 opcode 对应的源代码在第 2 行。
-* #*：这是 opcode 的序号。例如，ASSIGN 是第 0 个 opcode。
-* E 和 I、O：表示 opcode 的执行入口和跳转出口。
-* op：这是 opcode 的类型。例如，ASSIGN、NOP、FAST_CONCAT、ECHO 和 RETURN。
-* fetch 和 ext：这两列提供了 opcode 的额外信息。在这个例子中，这些列为空。
-* return：这列表示 opcode 的返回值。例如，FAST_CONCAT 的返回值是 ~2。
-* operands：这是 opcode 的操作数。例如，ASSIGN 的操作数是 !0 和 'PHP'，FAST_CONCAT 的操作数是 !0 和 '+is+the+best+language+in+the+world.'。
-* 具体到每个 opcode：
-* 第 0 个 opcode ASSIGN：将字符串 'PHP' 赋值给变量 !0（即 $name）。
-* 第 1 个 opcode NOP：不进行任何操作，通常用于占位或者标记。
-* 第 2 个 opcode FAST_CONCAT：将变量 !0 和字符串 '+is+the+best+language+in+the+world.' 进行连接，结果保存在 ~2 中。
-* 第 3 个 opcode ECHO：输出 FAST_CONCAT 的结果 ~2。
-* 第 4 个 opcode ECHO：输出字符串 '%0A'（即换行符）。
-* 第 5 个 opcode RETURN：返回 1，表示脚本执行成功。
+> * line：这是源代码中的行号。例如，第一个 opcode 对应的源代码在第 2 行。
+> * #*：这是 opcode 的序号。例如，ASSIGN 是第 0 个 opcode。
+> * E 和 I、O：表示 opcode 的执行入口和跳转出口。
+> * op：这是 opcode 的类型。例如，ASSIGN、NOP、FAST_CONCAT、ECHO 和 RETURN。
+> * fetch 和 ext：这两列提供了 opcode 的额外信息。在这个例子中，这些列为空。
+> * return：这列表示 opcode 的返回值。例如，FAST_CONCAT 的返回值是 ~2。
+> * operands：这是 opcode 的操作数。例如，ASSIGN 的操作数是 !0 和 'PHP'，FAST_CONCAT 的操作数是 !0 和 '+is+the+best+language+in+the+world.'。
+> * 具体到每个 opcode：
+> * 第 0 个 opcode ASSIGN：将字符串 'PHP' 赋值给变量 !0（即 $name）。
+> * 第 1 个 opcode NOP：不进行任何操作，通常用于占位或者标记。
+> * 第 2 个 opcode FAST_CONCAT：将变量 !0 和字符串 '+is+the+best+language+in+the+world.' 进行连接，结果保存在 ~2 中。
+> * 第 3 个 opcode ECHO：输出 FAST_CONCAT 的结果 ~2。
+> * 第 4 个 opcode ECHO：输出字符串 '%0A'（即换行符）。
+> * 第 5 个 opcode RETURN：返回 1，表示脚本执行成功。
 
 **（以上来自Chat-GPT4的回答）**
 

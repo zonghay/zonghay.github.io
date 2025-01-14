@@ -58,4 +58,9 @@ https://blog.csdn.net/qq_25123887/article/details/128233993
 ## PHP的强等是===,Golang的强等是==
 https://www.php.net/manual/zh/language.operators.comparison.php
 
+## Fatal error、Exception、Throwable
+* Throwable是最顶层的接口，包含了所有的错误和异常。
+* Exception是Throwable的一个子类，专门用于表示程序中的常规异常情况。
+* Fatal Error原本是一种独立于异常之外的严重错误类型，但在PHP7及以后的版本中，很多致命错误被重新分类为实现了Throwable接口的特殊异常（如FatalErrorException），从而使得它们也可以被捕获和处理。
+
 ## empty("0") return true
