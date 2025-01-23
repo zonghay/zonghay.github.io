@@ -43,9 +43,17 @@ import (
 
 const (
 	DefaultExpirationTime = 5 * time.Second
+	RenewInterval         = DefaultExpirationTime / 2 // 续租间隔为锁过期时间的一半
 	LuaCheckAndDelKey     = `
 	if(redis.call('get',KEYS[1])==ARGV[1]) then
 		return redis.call('del',KEYS[1])
+	else
+		return 0
+	end
+`
+	LuaCheckAndRenewKey = `
+	if(redis.call('get',KEYS[1])==ARGV[1]) then
+		return redis.call('expire',KEYS[1],ARGV[2])
 	else
 		return 0
 	end
@@ -57,7 +65,9 @@ type RedisLock struct {
 	val        string
 	expiration time.Duration
 	cli        *redis.Client
-	script     *redis.Script
+	script     *redis.Script  // 用于解锁的 Lua 脚本
+	renewScript *redis.Script // 用于续租的 Lua 脚本
+	stopChan   chan struct{}  // 用于停止续租 goroutine
 }
 
 func NewRedisLock(key string) *RedisLock {
@@ -69,15 +79,26 @@ func NewRedisLock(key string) *RedisLock {
 		expiration: DefaultExpirationTime,
 		cli:        cache.RedisV8Client,
 		script:     redis.NewScript(LuaCheckAndDelKey),
+		renewScript: redis.NewScript(LuaCheckAndRenewKey),
+		stopChan:   make(chan struct{}),
 	}
 }
 
 func (r *RedisLock) Lock(ctx context.Context) (bool, error) {
-	return r.cli.SetNX(ctx, r.key, r.val, r.expiration).Result()
+	success, err := r.cli.SetNX(ctx, r.key, r.val, r.expiration).Result()
+	if err != nil {
+		return false, err
+	}
+	if success {
+		go r.startRenewal(ctx) // 启动续租 goroutine
+	}
+	return success, nil
 }
 
 func (r *RedisLock) Unlock(ctx context.Context) error {
-	res, err := r.script.Run(context.Background(), r.cli, []string{r.key}, r.val).Int64()
+	close(r.stopChan) // 停止续租 goroutine
+
+	res, err := r.script.Run(ctx, r.cli, []string{r.key}, r.val).Int64()
 	if err != nil {
 		return err
 	}
@@ -85,5 +106,24 @@ func (r *RedisLock) Unlock(ctx context.Context) error {
 		return errors.New("unlock failed: the lock has been lost or the value does not match")
 	}
 	return nil
+}
+
+// 启动续租 goroutine
+func (r *RedisLock) startRenewal(ctx context.Context) {
+	ticker := time.NewTicker(RenewInterval)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ticker.C:
+			// 使用 Lua 脚本原子化检查锁是否持有并续租
+			res, err := r.renewScript.Run(ctx, r.cli, []string{r.key}, r.val, int(r.expiration/time.Second)).Result()
+			if err != nil || res == 0 {
+				return // 锁已丢失或续租失败，停止续租，打印错误日志
+			}
+		case <-r.stopChan:
+			return // 收到停止信号，退出续租 goroutine
+		}
+	}
 }
 ```
