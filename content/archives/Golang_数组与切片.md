@@ -1,7 +1,7 @@
 ---
 title: "Golang 数组与切片"
-date: 2025-01-09T15:19:07+08:00
-lastmod: 2025-01-09T15:19:07+08:00
+date: 2025-01-19T15:19:07+08:00
+lastmod: 2025-01-19T15:19:07+08:00
 author: ["ZhangYong"]
 tags: # 标签
 - ALL
@@ -82,6 +82,28 @@ func main() {
 
 具体可参考[https://golang.design/go-questions/slice/grow/](https://golang.design/go-questions/slice/grow/)上面的说法其实不完全正确。
 
+## nil切片和空切片
+- **nil 切片**：
+    - 未初始化的切片，值为 `nil`。
+    - 长度和容量都为 0。
+    - 示例：
+      ```
+      var nilSlice []int
+      fmt.Println(nilSlice == nil) // 输出: true
+      fmt.Println(len(nilSlice))   // 输出: 0
+      fmt.Println(cap(nilSlice))   // 输出: 0
+      ```
+
+- **空切片**：
+    - 已初始化的切片，但没有任何元素。
+    - 长度和容量都为 0。
+    - 示例：
+      ```
+      emptySlice := []int{}
+      fmt.Println(emptySlice == nil) // 输出: false
+      fmt.Println(len(emptySlice))   // 输出: 0
+      fmt.Println(cap(emptySlice))   // 输出: 0
+      ```
 
 
 ## 参考

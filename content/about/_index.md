@@ -21,6 +21,7 @@ cover:
 ---
 
 > 芝兰生于幽谷，不以无人而不芳。
+> 
 > 君子修道立德，不谓穷困而改节。
 
 ## 关于我
@@ -33,12 +34,14 @@ cover:
 
 [**《我的技能树》**](https://p7fybgeqg9.feishu.cn/docx/BoDDd3EbOoUv99x4Z5ecaXVenQe?openbrd=1&doc_app_id=501&blockId=OJfgdx3qCoMv0ixM0GTcmrZvnMb&blockType=whiteboard&blockToken=PVlDwt5vYh3fp4bLLGwcwZ4CnQc#OJfgdx3qCoMv0ixM0GTcmrZvnMb)
 
+[**《我的简历(PDF)》**]()
+
 ### 兴趣爱好
 
 - 业余踢足球⚽️
 - 业余打篮球🏀
 - 偶尔看电影和剧集🎬 
-- 偶尔自律（包括但不限于游泳、健身）
+- 偶尔自律（包括但不限于游泳、健身、跑步等）
 
 ### 工作经历
 - 2018-2021 好未来

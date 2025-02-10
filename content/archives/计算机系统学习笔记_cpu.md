@@ -1,5 +1,5 @@
 ---
-title: "计算机系统学习之CPU"
+title: "计算机系统之CPU"
 date: 2024-08-29T17:49:10+08:00
 lastmod: 2024-08-29T17:49:10+08:00
 author: ["ZhangYong"]

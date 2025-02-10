@@ -56,7 +56,7 @@ ShowBreadCrumbs: false #顶部显示路径
 
 composer.json 结构详细见官方说明
 
-[https://docs.phpcomposer.com/04-schema.html\](https://docs.phpcomposer.com/04-schema.html)
+[https://docs.phpcomposer.com/04-schema.html](https://docs.phpcomposer.com/04-schema.html)
 
 #### Composer install
 
@@ -110,7 +110,7 @@ Composer 从现有的包中创建一个新的项目。这相当于执行了一�
 
 >`composer dump-autoload --optimize`
 
->安装包的时候可以同样使用--optimize-autoloader。不加这一选项，你可能会发现20%到25%的性能损失。
+>安装包的时候可以同样使用--optimize-autoloader。不加这一选项，你可能会发现20%到25%的性能损失。（作用是生成一个优化的类映射文件 vendor/composer/autoload_classmap.php ，将类名和文件路径的映射关系提前生成并保存到一个静态数组中）
 
 在PHP-FPM模式下，autoloader 会占用每个请求的很大一部分时间（比如laravel），使用 classmaps 或许在开发时不太方便，但它在保证性能的前提下，仍然可以获得 PSR-0/4 规范带来的便利。
 

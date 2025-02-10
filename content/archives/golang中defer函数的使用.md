@@ -1,7 +1,7 @@
 ---
 title: "Golang中defer函数的使用"
-date: 2024-08-08T14:56:30+08:00
-lastmod: 2024-08-08T14:56:30+08:00
+date: 2023-08-08T14:56:30+08:00
+lastmod: 2023-08-08T14:56:30+08:00
 author: ["ZhangYong"]
 tags: # 标签
 - ALL
