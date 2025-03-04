@@ -1,5 +1,5 @@
 ---
-title: "Golang 接口"
+title: "Golang 接口(Interface)"
 date: 2025-02-06T17:36:57+08:00
 lastmod: 2025-02-06T17:36:57+08:00
 author: ["ZhangYong"]

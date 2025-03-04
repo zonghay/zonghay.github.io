@@ -110,6 +110,54 @@ func main() {
       fmt.Println(cap(emptySlice))   // 输出: 0
       ```
 
+## copy函数
+在 Go 语言中，`copy` 函数用于将一个切片的内容复制到另一个切片中，从而创建一个新的切片，避免共享底层数组。          
+在同一个切片中进行部分复制时，copy 是安全的。
+
+### copy的行为
+- **复制规则**：
+    - 从源切片 `src` 复制元素到目标切片 `dst`。
+    - 复制的元素数量是 `dst` 和 `src` 长度的较小值。
+    - 不会改变目标切片 `dst` 的长度和容量。
+- **注意事项**：
+    - 如果 `dst` 或 `src` 是 `nil`，`copy` 会返回 0（不执行任何操作）。
+    - 如果 `dst` 和 `src` 是同一个切片，`copy` 会正确处理重叠的情况。
+
+### 示例代码
+```go
+package main
+
+import "fmt"
+
+func main() {
+    // 示例 1: 普通复制
+    src := []int{1, 2, 3, 4, 5}
+    dst := make([]int, 3) // 目标切片长度为 3
+    n := copy(dst, src)   // 复制 3 个元素
+    fmt.Println("Copied elements:", n) // 3
+    fmt.Println("dst:", dst)          // [1 2 3]
+
+    // 示例 2: 目标切片长度大于源切片
+    src = []int{10, 20}
+    dst = make([]int, 5) // 目标切片长度为 5
+    n = copy(dst, src)   // 复制 2 个元素
+    fmt.Println("Copied elements:", n) // 2
+    fmt.Println("dst:", dst)          // [10 20 0 0 0]
+
+    // 示例 3: 目标切片长度小于源切片
+    src = []int{100, 200, 300}
+    dst = make([]int, 2) // 目标切片长度为 2
+    n = copy(dst, src)   // 复制 2 个元素
+    fmt.Println("Copied elements:", n) // 2
+    fmt.Println("dst:", dst)          // [100 200]
+
+    // 示例 4: 目标切片和源切片是同一个切片
+    src = []int{1, 2, 3, 4, 5}
+    n = copy(src[2:], src) // 重叠复制
+    fmt.Println("Copied elements:", n) // 3
+    fmt.Println("src:", src)          // [1 2 1 2 3]
+}
+```
 
 ## 参考
 [https://golang.design/go-questions/slice/vs-array/](https://golang.design/go-questions/slice/vs-array/)

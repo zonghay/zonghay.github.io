@@ -79,4 +79,7 @@ echo "Profiling completed."
 由于问题处缓存的文本量较大且struct对象的类型也较为复杂，所以当稍微请求量多一些时，就会造成unmarshall占用更多计算资源。所以，后面我们决定给容器加资源并更改json包(buger/jsonparser)来解决此问题。     
 原生json在解析过程中涉及大量反射和递归，这两个影响性能的点在jsonparser中是不存在的。
 
+后续：     
+我们发现了[Pyroscope](https://pyroscope.io/)这款工具可以更好的将线上运行的pprof数据同步到grafana进行查看
+
 参考：[深入 Go 中各个高性能 JSON 解析库](https://www.luozhiyun.com/archives/535)
