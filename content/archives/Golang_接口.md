@@ -164,6 +164,39 @@ class MyClass implements InterfaceA, InterfaceB {
 | 空接口              | 支持（`interface{}`）            | 不支持 |
 | 类型系统            | 静态类型                         | 动态类型               |
 
+## 函数类型也能实现接口
+乍一听是不是感觉很神奇？！       
+来看标准库net/http中的经典代码
+```go
+package http
+
+type Handler interface {
+    ServeHTTP(ResponseWriter, *Request)
+}
+
+func Handle(pattern string, handler Handler) {
+  ...
+}
+
+type HandlerFunc func(ResponseWriter, *Request)
+
+// 为 HandlerFunc 实现 ServeHTTP 方法
+func (f HandlerFunc) ServeHTTP(w ResponseWriter, r *Request) {
+    f(w, r)
+}
+```
+使用方式：
+```go
+func helloHandler(w http.ResponseWriter, r *http.Request) {
+    w.Write([]byte("Hello, World!"))
+}
+
+func main() {
+    http.Handle("/", http.HandlerFunc(helloHandler))
+    http.ListenAndServe(":8080", nil)
+}
+```
+> 思考一个问题：为什么 http.Handle 函数的第二个参数不直接声明为 HandlerFunc，而是声明为 Handler 接口呢？
 
 ## 编译器自动检测类型是否实现接口
 经常看到一些开源库里会有一些类似下面这种奇怪的用法：
@@ -209,7 +242,7 @@ src/main.go:15:6: cannot use myWriter literal (type myWriter) as type io.Writer 
 ## 值接收者和指针接收者
 
 ### 普通方法
-直接讲结论：对于普通方法调用，不管方法的接收者是什么类型，该类型的值和指针都可以调用，不必严格符合接收者的类型。
+直接讲结论：对于普通方法(不实现接口的方法)调用，不管方法的接收者是什么类型，该类型的值和指针都可以调用，不必严格符合接收者的类型。
 
 ```go
 package main
@@ -303,7 +336,7 @@ func main() {
 所以，当实现了一个接收者是值类型的方法，就可以自动生成一个接收者是对应指针类型的方法，因为两者都不会影响接收者。但是，当实现了一个接收者是指针类型的方法，如果此时自动生成一个接收者是值类型的方法，原本期望对接收者的改变（通过指针实现），现在无法实现，因为值类型会产生一个拷贝，不会真正影响调用者。
 
 ### 使用场景
-使用指针作为方法的接收者的理由：
+
 1. 如果类型的本质是“原始的”（primitive），或者其成员是内置的引用类型（如 slice、map、interface、channel），则使用值接收者。因为这些类型的复制是安全的，且成本较低。
 ```go
 type Point struct {
