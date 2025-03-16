@@ -69,7 +69,7 @@ func process(ctx context.Context) {
 ```
 
 ### 取消 goroutine
-通过 `WithCancel`、`WithDeadline` 或 `WithTimeout`，可以创建一个可取消的 `context`，并将其传递给多个 goroutine。当需要取消这些 goroutine 时，只需调用 `cancel` 函数即可。
+通过 `WithCancel`、`WithDeadline` 或 `WithTimeout`，可以创建一个可取消的 `context`，并将其传递给多个 goroutine。当需要取消这些 goroutine 时，只需调用 `cancel` 函数即可（或等待`context`超时）。
 
 ```go
 func main() {
@@ -85,15 +85,14 @@ func Perform(ctx context.Context) {
             // 被取消，直接返回
             return
         default:
-            doA()
-            doB()
+            doSomething()
         }
     }
 }
 ```
 
 ### 防止 goroutine 泄漏
-`context` 的取消机制可以确保 goroutine 在不再需要时及时退出，从而避免 goroutine 泄漏。
+`context` 的取消机制可以确保 `goroutine` 在不再需要时及时退出，本质还是取消 `goroutine` 从而避免 `goroutine` 泄漏。
 
 ```go
 func gen(ctx context.Context) <-chan int {
@@ -130,11 +129,25 @@ func main() {
 
 ## Context.Value查找过程
 
-通过 `WithValue` 函数，可以创建层层的 `valueCtx`，存储 `goroutine` 间可以共享的变量，最终形成这样一棵树：
+通过 `WithValue` 函数，可以创建层级结构的 `valueCtx` 来存储 `goroutine` 间可以共享的变量，最终形成这样一棵树：
 ![context_search_val.png](/images/Go/context_search_val.png)
 和链表有点像，只是它的方向相反：`Context` 指向它的父节点，链表则指向下一个节点。       
 取值的过程，实际上是一个递归查找的过程：
 ```go
+
+func WithValue(parent Context, key, val any) Context {
+    if parent == nil {
+        panic("cannot create context from nil parent")
+    }
+    if key == nil {
+        panic("nil key")
+    }
+    if !reflectlite.TypeOf(key).Comparable() {
+        panic("key is not comparable")
+    }
+        return &valueCtx{parent, key, val}
+}
+	
 func (c *valueCtx) Value(key interface{}) interface{} {
     if c.key == key {
         return c.val
@@ -144,9 +157,8 @@ func (c *valueCtx) Value(key interface{}) interface{} {
 ```
 它会顺着链路一直往上找，比较当前节点的 `key` 是否是要找的 `key`，如果是，则直接返回 `value`。否则，一直顺着 `context` 往前，最终找到根节点（一般是 `emptyCtx`），直接返回一个 `nil`。所以用 `Value` 方法的时候要判断结果是否为 `nil`。
 
-因为查找方向是往上走的，所以，父节点没法获取子节点存储的值，子节点却可以获取父节点的值。
-
-`WithValue` 创建 `context` 节点的过程实际上就是创建链表节点的过程。两个节点的 `key` 值是可以相等的，但它们是两个不同的 `context` 节点。查找的时候，会向上查找到最后一个挂载的 `context` 节点，也就是离得比较近的一个父节点 `context`。所以，整体上而言，用 `WithValue` 构造的其实是一个低效率的链表。
+因为查找方向是往上走的，父节点没法获取子节点存储的值，子节点却可以获取父节点的值。
+所以，整体上而言，用 `WithValue` 构造的其实是一个低效率的链表。
 
 ### 查找过程的坑
 - **子 context 覆盖父 context**：如果在子 `context` 中设置了与父 `context` 相同的键，子 `context` 的值会覆盖父 `context` 的值。这种行为可能会导致意外的结果，因此在使用 `WithValue` 时需要特别注意键的唯一性。
@@ -173,19 +185,131 @@ type Context interface {
 * **`todoCtx`**：由 `TODO()` 函数返回的
 * **`afterFuncCtx`**：go 1.21 版本后引入`AfterFunc(ctx Context, f func()) (stop func() bool)` 用于定义 `Context` 被取消或超时后执行一个回调函数。（每个 `context` 的 `AfterFunc` 回调是独立的，父注册的函数不会作用到子）
 * **`stopCtx`** 同上在`AfterFunc`函数内间接使用
-* **`cancelCtx`**
-* **`withoutCancelCtx`**
-* **`timerCtx`**
-* **`valueCtx`**
+* **`cancelCtx`** 能够主动取消，在取消时遍历所有可取消的子`Context`
+* **`withoutCancelCtx`** 使用`WithoutCancel`方法创建一个不被父`Context`取消所影响的子`Context`
+* **`timerCtx`** `WithDeadline`和`WithTimeout`创建的`Context`
+* **`valueCtx`** `WithValue`创建的`Context`
 
 ### cancelCtx
-`cancelCtx` 是 `WithCancel` 返回的 `context` 类型，其核心是一个 `done` channel 和一个 `children` map。当调用 `cancel` 函数时，会关闭 `done` channel 并递归取消所有子 `context`。
+实现`canceler`接口
+```go
+// A canceler is a context type that can be canceled directly. The
+// implementations are *cancelCtx and *timerCtx.
+type canceler interface {
+	cancel(removeFromParent bool, err, cause error)
+	Done() <-chan struct{}
+}
+```
+`Done`方法不看了，直接看`cancel`方法
+```go
+// cancel closes c.done, cancels each of c's children, and, if
+// removeFromParent is true, removes c from its parent's children.
+// cancel sets c.cause to cause if this is the first time c is canceled.
+func (c *cancelCtx) cancel(removeFromParent bool, err, cause error) {
+	if err == nil {
+		panic("context: internal error: missing cancel error")
+	}
+	if cause == nil {
+		cause = err
+	}
+	c.mu.Lock()
+	if c.err != nil {
+		c.mu.Unlock()
+		return // already canceled
+	}
+	c.err = err
+	c.cause = cause
+	d, _ := c.done.Load().(chan struct{}) // 懒惰创建
+	if d == nil {
+		c.done.Store(closedchan)
+	} else {
+		close(d)
+	}
+	for child := range c.children { // 遍历子节点cancel
+		// NOTE: acquiring the child's lock while holding parent's lock.
+		child.cancel(false, err, cause)
+	}
+	c.children = nil
+	c.mu.Unlock()
 
-### valueCtx
-`valueCtx` 是 `WithValue` 返回的 `context` 类型，其核心是一个键值对和一个指向父 `context` 的指针。`Value` 方法会递归查找键值对。
+	if removeFromParent {
+		removeChild(c.Context, c) // 从父节点移除
+	}
+}
+```
+总体来看，`cancel()` 方法的功能就是关闭 `channel`；递归地取消它的所有子节点；从父节点从删除自己。达到的效果是通过关闭 `channel`，将取消信号传递给了它的所有子节点。`goroutine` 接收到取消信号的方式就是 `select` 语句中的读 `c.done` 被选中。
 
 ### timerCtx
-`timerCtx` 是 `WithDeadline` 和 `WithTimeout` 返回的 `context` 类型，它在 `cancelCtx` 的基础上增加了定时器功能。当定时器触发时，会自动调用 `cancel` 函数。
+`timerCtx` 基于 `cancelCtx`，只是多了一个 `time.Timer` 和一个 `deadline`。`Timer` 会在 `deadline` 到来时，自动取消 `context`。
+```go
+type timerCtx struct {
+	cancelCtx
+	timer *time.Timer // Under cancelCtx.mu.
+
+	deadline time.Time
+}
+```
+`timerCtx` 首先是一个`cancelCtx`，所以它能取消
+```go
+func (c *timerCtx) cancel(removeFromParent bool, err error) {
+	// 直接调用 cancelCtx 的取消方法
+	c.cancelCtx.cancel(false, err)
+	if removeFromParent {
+		// 从父节点中删除子节点
+		removeChild(c.cancelCtx.Context, c)
+	}
+	c.mu.Lock()
+	if c.timer != nil {
+		// 关掉定时器，这样，在deadline 到来时，不会再次取消
+		c.timer.Stop()
+		c.timer = nil
+	}
+	c.mu.Unlock()
+}
+```
+创建 `timerCtx` 的方法：
+```go
+func WithTimeout(parent Context, timeout time.Duration) (Context, CancelFunc) {
+	return WithDeadline(parent, time.Now().Add(timeout))
+}
+```
+`WithTimeout` 函数直接调用了 `WithDeadline`，传入的 `deadline` 是当前时间加上 `timeout` 的时间，也就是从现在开始再经过 `timeout` 时间就算超时。也就是说，`WithDeadline` 需要用的是绝对时间。
+```go
+func WithDeadline(parent Context, deadline time.Time) (Context, CancelFunc) {
+	if cur, ok := parent.Deadline(); ok && cur.Before(deadline) {
+		// 如果父节点 context 的 deadline 早于指定时间。直接构建一个可取消的 context。
+		// 原因是一旦父节点超时，自动调用 cancel 函数，子节点也会随之取消。
+		// 所以不用单独处理子节点的计时器时间到了之后，自动调用 cancel 函数
+		return WithCancel(parent)
+	}
+	
+	// 构建 timerCtx
+	c := &timerCtx{
+		cancelCtx: newCancelCtx(parent),
+		deadline:  deadline,
+	}
+	// 挂靠到父节点上
+	propagateCancel(parent, c)
+	
+	// 计算当前距离 deadline 的时间
+	d := time.Until(deadline)
+	if d <= 0 {
+		// 直接取消
+		c.cancel(true, DeadlineExceeded) // deadline has already passed
+		return c, func() { c.cancel(true, Canceled) }
+	}
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if c.err == nil {
+		// d 时间后，timer 会自动调用 cancel 函数。自动取消
+		c.timer = time.AfterFunc(d, func() {
+			c.cancel(true, DeadlineExceeded)
+		})
+	}
+	return c, func() { c.cancel(true, Canceled) }
+}
+```
+
 
 
 ## OpenTracing-Go
