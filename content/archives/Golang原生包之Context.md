@@ -186,12 +186,12 @@ type Context interface {
 * **`afterFuncCtx`**：go 1.21 版本后引入`AfterFunc(ctx Context, f func()) (stop func() bool)` 用于定义 `Context` 被取消或超时后执行一个回调函数。（每个 `context` 的 `AfterFunc` 回调是独立的，父注册的函数不会作用到子）
 * **`stopCtx`** 同上在`AfterFunc`函数内间接使用
 * **`cancelCtx`** 能够主动取消，在取消时遍历所有可取消的子`Context`
-* **`withoutCancelCtx`** 使用`WithoutCancel`方法创建一个不被父`Context`取消所影响的子`Context`
+* **`withoutCancelCtx`** 使用`WithoutCancel`方法创建一个不被父`Context`取消所影响的子`Context` (`Done`方法返回`nil`队列)
 * **`timerCtx`** `WithDeadline`和`WithTimeout`创建的`Context`
 * **`valueCtx`** `WithValue`创建的`Context`
 
 ### cancelCtx
-实现`canceler`接口
+所有可取消的`Context`都需要实现`canceler`接口，包含一个取消函数`cancel()`和返回只读队列的`Done()`函数
 ```go
 // A canceler is a context type that can be canceled directly. The
 // implementations are *cancelCtx and *timerCtx.
@@ -200,7 +200,7 @@ type canceler interface {
 	Done() <-chan struct{}
 }
 ```
-`Done`方法不看了，直接看`cancel`方法
+`Done`方法不看了，直接看`cancelCtx`实现的`cancel`方法
 ```go
 // cancel closes c.done, cancels each of c's children, and, if
 // removeFromParent is true, removes c from its parent's children.
@@ -311,11 +311,156 @@ func WithDeadline(parent Context, deadline time.Time) (Context, CancelFunc) {
 ```
 
 
+## 在OpenTelemetry-Go中的应用
+关于Context正确使用的一个实际案例体现在[OpenTelemetry-Go](https://pkg.go.dev/go.opentelemetry.io/otel#section-readme)包中。
 
-## OpenTracing-Go
+OpenTelemetry (以下简称otel) 是一个开源的观测框架，用于生成、收集和管理Trace、Metric和Log数据。它旨在提供一套标准化的工具和 API，帮助开发者监控和诊断分布式系统的性能和行为。
 
+OpenTelemetry-Go 则是使用Go语言实现otel规范的包，提供一套API生成分布式服务监控数据，并发送到支持otel协议的Collector中。
 
+常见的使用otel来进行分布式链路追踪的实现方式如下：      
+分布式服务生成Trace信息 -> Export到otel-Collector -> Store在Tempo -> 最终在Grafana Dashboard进行观测
+
+一条请求的Trace数据由一个TraceID和一系列Span数据组成，Span之间只有两种关系：ChildOf和FollowFrom。每个Span代表请求处理的不同阶段，如下图所示。
+![context_trace.png](/images/Go/context_trace.png)
+所以在Trace的实现上，对于常见的Go服务(Http/Grpc)来讲，一次请求往往涉及到多个Goroutine并发处理数据，此时就需要一个能在Goroutine内传递、存取数据的容器。那这个容器非Context莫属了,主要体现在以下几个方面：
+
+### 存储、传递Span信息
+OpenTelemetry使用Context来传递和存储Span信息，确保在分布式系统中的请求追踪能够正确关联：
+```go
+// 创建一个新的Span
+ctx, span := tracer.Start(ctx, "operation-name")
+defer span.End()
+
+// 在其他函数中使用同一个Context
+doSomething(ctx)
+```
+这里的Context负责携带Span信息，使得在不同函数、不同Goroutine之间能够保持追踪上下文的连贯性。            
+我们来看一下Strat函数的实现细节
+```go
+// Start creates a span and a context.Context containing the newly-created span.
+//
+// If the context.Context provided in `ctx` contains a Span then the newly-created
+// Span will be a child of that span, otherwise it will be a root span. This behavior
+// can be overridden by providing `WithNewRoot()` as a SpanOption, causing the
+// newly-created Span to be a root span even if `ctx` contains a Span.
+//
+// When creating a Span it is recommended to provide all known span attributes using
+// the `WithAttributes()` SpanOption as samplers will only have access to the
+// attributes provided when a Span is created.
+//
+// Any Span that is created MUST also be ended. This is the responsibility of the user.
+// Implementations of this API may leak memory or other resources if Spans are not ended.
+Start(ctx context.Context, spanName string, opts ...SpanStartOption) (context.Context, Span)
+```
+
+```go
+// The Span is created with the provided name and as a child of any existing
+// span context found in the passed context. The created Span will be
+// configured appropriately by any SpanOption passed.
+func (tr *tracer) Start(ctx context.Context, name string, options ...trace.SpanStartOption) (context.Context, trace.Span) {
+	config := trace.NewSpanStartConfig(options...)
+
+	if ctx == nil {
+		// Prevent trace.ContextWithSpan from panicking.
+		ctx = context.Background()
+	}
+
+	// For local spans created by this SDK, track child span count.
+	if p := trace.SpanFromContext(ctx); p != nil {
+		if sdkSpan, ok := p.(*recordingSpan); ok {
+			sdkSpan.addChild()
+		}
+	}
+
+	s := tr.newSpan(ctx, name, &config)
+	if rw, ok := s.(ReadWriteSpan); ok && s.IsRecording() {
+		sps := tr.provider.getSpanProcessors()
+		for _, sp := range sps {
+			sp.sp.OnStart(ctx, rw)
+		}
+	}
+	if rtt, ok := s.(runtimeTracer); ok {
+		ctx = rtt.runtimeTrace(ctx)
+	}
+
+	return trace.ContextWithSpan(ctx, s), s
+}
+```
+可以看到Trace.Start工作就是通过newSpan函数创建一个新Span，新的Span继承父Span的TraceID并生成新SpanID，并记录父Span的Context。  
+然后再通过trace.ContextWithSpan函数，基于父Context生成新的Context并绑定Value。
+
+### 进程内传递元数据
+ContextWithSpan和SpanFromContext是在进程内传递Trace数据的关键，适用于同一进程的多Goroutine间传递。
+```go
+// ContextWithSpan returns a copy of parent with span set as the current Span.
+func ContextWithSpan(parent context.Context, span Span) context.Context {
+    return context.WithValue(parent, currentSpanKey, span)
+}
+
+// SpanFromContext returns the current Span from ctx.
+//
+// If no Span is currently set in ctx an implementation of a Span that
+// performs no operations is returned.
+func SpanFromContext(ctx context.Context) Span {
+    if ctx == nil {
+        return noopSpanInstance
+    }
+    if span, ok := ctx.Value(currentSpanKey).(Span); ok {
+        return span
+    }
+    return noopSpanInstance
+}
+```
+其实现就是利用context.Value特性把Span绑定在同一Key下进行读取
+
+### 跨进程传递请求信息
+除了进程内Goroutine间传递Trace信息，在微服务架构中，我们还经常需要从Http的Header或Grpc的metadata中解析跨服务传播的Trace信息。一般通过Grpc拦截器或Http中间件实现。           
+以Grpc客户端的WithUnaryInterceptor拦截器为例
+```go
+func UnaryClientInterceptor(opts ...Option) grpc.UnaryClientInterceptor {
+	return func(
+		ctx context.Context,
+		method string,
+		req, reply interface{},
+		cc *grpc.ClientConn,
+		invoker grpc.UnaryInvoker,
+		opts ...grpc.CallOption,
+	) error {
+		// 从上下文中提取 Trace 信息
+		propagator := otel.GetTextMapPropagator()
+		ctx = propagator.Extract(ctx, metadata.NewOutgoingContext(ctx, metadata.MD{}))
+
+		// 创建新的 Span
+		tracer := otel.Tracer("grpc-client")
+		ctx, span := tracer.Start(ctx, method)
+		defer span.End()
+
+		// 将 Trace 信息注入到 gRPC metadata 中
+		md, ok := metadata.FromOutgoingContext(ctx)
+		if !ok {
+			md = metadata.MD{}
+		}
+		propagator.Inject(ctx, propagation.HeaderCarrier(md))
+		ctx = metadata.NewOutgoingContext(ctx, md)
+
+		// 发起 gRPC 请求
+		err := invoker(ctx, method, req, reply, cc, opts...)
+
+		// 记录请求结果
+		if err != nil {
+			span.RecordError(err)
+			span.SetStatus(codes.Error, err.Error())
+		} else {
+			span.SetStatus(codes.Ok, "OK")
+		}
+
+		return err
+	}
+}
+```
 
 ## 参考
 [context如何被取消](https://golang.design/go-questions/stdlib/context/cancel/)            
-[OpenTracing](https://opentracing.io/docs/overview/)            
+[OpenTelemetry-Trace](https://opentelemetry.io/docs/concepts/signals/traces/)         
+[gRPC 微服务构建之链路追踪](https://pandaychen.github.io/2020/06/01/GOLANG-TRACING-WITH-ZIPKIN/)
