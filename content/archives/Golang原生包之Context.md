@@ -29,7 +29,7 @@ cover:
     relative: false
 ---
 
-首先要说的是[context/context.go](https://golang.org/src/context/context.go)源码是一个非常值得学习的实现案例，非常建议大家对照着源码看文章。
+首先要说的是[context/context.go](https://golang.org/src/context/context.go)源码是一个非常值得学习的实现案例，非常建议阅读源码。
 其次关于context的功能简单点可以一言以蔽之：       
 > **「context 用来解决 goroutine 之间退出通知、元数据传递的功能。」**
 
@@ -152,7 +152,7 @@ func (c *valueCtx) Value(key interface{}) interface{} {
     if c.key == key {
         return c.val
     }
-    return c.Context.Value(key)
+    return c.Context.Value(key) // 此时的c.Context是parent，向上的递归查询
 }
 ```
 它会顺着链路一直往上找，比较当前节点的 `key` 是否是要找的 `key`，如果是，则直接返回 `value`。否则，一直顺着 `context` 往前，最终找到根节点（一般是 `emptyCtx`），直接返回一个 `nil`。所以用 `Value` 方法的时候要判断结果是否为 `nil`。
@@ -312,7 +312,7 @@ func WithDeadline(parent Context, deadline time.Time) (Context, CancelFunc) {
 
 
 ## 在OpenTelemetry-Go中的应用
-关于Context正确使用的一个实际案例体现在[OpenTelemetry-Go](https://pkg.go.dev/go.opentelemetry.io/otel#section-readme)包中。
+关于Context使用的一个实际案例体现在[OpenTelemetry-Go](https://pkg.go.dev/go.opentelemetry.io/otel#section-readme)包中。
 
 OpenTelemetry (以下简称otel) 是一个开源的观测框架，用于生成、收集和管理Trace、Metric和Log数据。它旨在提供一套标准化的工具和 API，帮助开发者监控和诊断分布式系统的性能和行为。
 
@@ -323,7 +323,9 @@ OpenTelemetry-Go 则是使用Go语言实现otel规范的包，提供一套API生
 
 一条请求的Trace数据由一个TraceID和一系列Span数据组成，Span之间只有两种关系：ChildOf和FollowFrom。每个Span代表请求处理的不同阶段，如下图所示。
 ![context_trace.png](/images/Go/context_trace.png)
-所以在Trace的实现上，对于常见的Go服务(Http/Grpc)来讲，一次请求往往涉及到多个Goroutine并发处理数据，此时就需要一个能在Goroutine内传递、存取数据的容器。那这个容器非Context莫属了,主要体现在以下几个方面：
+所以在Trace的实现上，对于常见的Go服务(Http/Grpc)来讲，一次请求往往涉及到多个Goroutine并发处理数据，此时就需要一个能在Goroutine内传递、存取数据的容器。           
+
+那这个容器非Context莫属了,主要体现在以下几个方面：
 
 ### 存储、传递Span信息
 OpenTelemetry使用Context来传递和存储Span信息，确保在分布式系统中的请求追踪能够正确关联：
