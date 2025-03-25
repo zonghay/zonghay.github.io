@@ -240,5 +240,7 @@ Tempo 的优势：
 
 ## 参考
 [阿里云-可观测链路OpenTelemetry版](https://help.aliyun.com/zh/opentelemetry/product-overview/what-is-managed-service-for-opentelemetry?spm=a2c4g.11186623.help-menu-90275.d_0_1_0.20d3355aJDRvmG)                 
-[How to send traces to Grafana Cloud's Tempo service with OpenTelemetry Collector](https://grafana.com/blog/2021/04/13/how-to-send-traces-to-grafana-clouds-tempo-service-with-opentelemetry-collector/)
+[How to send traces to Grafana Cloud's Tempo service with OpenTelemetry Collector](https://grafana.com/blog/2021/04/13/how-to-send-traces-to-grafana-clouds-tempo-service-with-opentelemetry-collector/)    
+[Grafana Tempo](https://grafana.com/docs/tempo/latest/)       
+[OTel-Collector](https://opentelemetry.io/docs/collector/quick-start/)
 
