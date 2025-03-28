@@ -250,6 +250,22 @@ func AppendList(headPointer, currentPointer **ListNode, val int) {
 Golang Map源码的实现中使用二级指针来存放bucket中的key和value值             
 详情请阅读[GO源码分析-map](https://www.yinlijun.com/2023/02/14/go-map/)
 
+## unsafe.Pointer
+
+通过上述内容我们已知，Go指针无法进行数学运算、比较以及不同类型指针间不能互转和赋值。     
+unsafe.Pointer提供了一个重要的能力：任何类型的指针和 unsafe.Pointer 可以相互转换。     
+
+一个实际应用就是使用unsafe.Pointer实现**零拷贝**字符串和bytes之间的转换。
+```go
+func string2bytes(s string) []byte {
+	return *(*[]byte)(unsafe.Pointer(&s))
+}
+func bytes2string(b []byte) string{
+	return *(*string)(unsafe.Pointer(&b))
+}
+```
+原理上是利用指针的强转。
+
 ## 参考
 [Go 语言指针详解](https://www.jiyik.com/w/go/go-pointers)         
 [Go 语言多级指针 - 指向指针的指针](https://www.jiyik.com/w/go/go-pointer-to-pointer)         
