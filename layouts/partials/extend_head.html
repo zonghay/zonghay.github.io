@@ -1,0 +1,35 @@
+{{- if or .Params.katex .Site.Params.katex }}
+<!-- KaTeX -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.4/dist/katex.min.css">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.4/dist/katex.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.4/dist/contrib/auto-render.min.js" onload="renderMathInElement(document.body);"></script>
+
+<!-- 自定义 KaTeX 配置 -->
+<script>
+    document.addEventListener("DOMContentLoaded", function() {
+        renderMathInElement(document.body, {
+            delimiters: [
+                {left: '$$', right: '$$', display: true},
+                {left: '$', right: '$', display: false},
+                {left: '\\(', right: '\\)', display: false},
+                {left: '\\[', right: '\\]', display: true}
+            ],
+            throwOnError : false
+        });
+    });
+</script>
+
+<!-- 添加自定义 CSS 使数学公式左对齐 -->
+<style>
+    .katex-display {
+        text-align: left !important;
+        margin-left: 0 !important;
+    }
+    
+    /* 可选：为左对齐的公式添加一些缩进 */
+    .katex-display > .katex {
+        text-align: left !important;
+        margin-left: 2em !important;
+    }
+</style>
+{{- end }}
