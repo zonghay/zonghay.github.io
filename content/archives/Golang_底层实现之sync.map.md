@@ -36,7 +36,7 @@ cover:
 
 ## 底层实现
 
-一句话总结：sync.map本质是运用**读写分离**(也可以理解为空间换时间)的数据思路来解决高并发问题。
+一句话总结：sync.map本质是运用**读写分离**(也可以理解为空间换时间)的数据思路来解决高并发读写问题。
 
 ### 数据结构
 ```go
@@ -102,6 +102,13 @@ func (m *Map) Load(key any) (value any, ok bool) {
 		return nil, false
 	}
 	return e.load()
+}
+
+func (m *Map) loadReadOnly() readOnly {
+    if p := m.read.Load(); p != nil {
+    return *p
+    }
+    return readOnly{}
 }
 ```
 结合下图和源码注释可以很好的理解Load函数逻辑：
@@ -183,6 +190,7 @@ func (m *Map) Store(key, value any) {
 func (m *Map) Swap(key, value any) (previous any, loaded bool) {
 	read := m.loadReadOnly()
 	if e, ok := read.m[key]; ok {
+		// trySwap swaps a value if the entry has not been expunged.
 		if v, ok := e.trySwap(&value); ok {
 			if v == nil {
 				return nil, false

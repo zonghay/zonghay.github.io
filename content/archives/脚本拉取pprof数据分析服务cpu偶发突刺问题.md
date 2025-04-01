@@ -76,7 +76,7 @@ echo "Profiling completed."
 
 后续通过pprof生成的graph图，我们将问题定位到某段用于解析用户缓存数据的json.unmarshall代码处。     
 这里补充一个必要信息是，由于游戏刚上线，运维初期给我这个服务容器配置的资源较低，所以更容易引发CPU突刺。   
-由于问题处缓存的文本量较大且struct对象的类型也较为复杂，所以当稍微请求量多一些时，就会造成unmarshall占用更多计算资源。所以，后面我们决定给容器加资源并更改json包(buger/jsonparser)来解决此问题。     
+由于问题处缓存的文本量较大且struct对象的类型也较为复杂，所以当稍微请求量多一些时，就会造成unmarshall占用更多计算资源。所以，后面我们决定给容器加资源并在处理大json的地方更改json包(buger/jsonparser)来解决此问题(虽然jsonparser不会检查json字符串格式，使用起来也不太方便)。         
 原生json在解析过程中涉及大量反射和递归，这两个影响性能的点在jsonparser中是不存在的。
 
 后续：     
