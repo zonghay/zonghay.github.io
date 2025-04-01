@@ -31,7 +31,7 @@ cover:
 # 什么是GMP
 
 ## G（Goroutine）
-代表goroutine，主要保存状态信息以及C寄存器的值。           
+G 是调度的基本单位，由 Go 运行时管理，比 OS 线程更轻量代表goroutine，主要保存状态信息以及C寄存器的值。           
 当 goroutine 被调离 CPU 时，调度器负责把 CPU 寄存器的值保存在 g 对象的成员变量之中。
 当 goroutine 被调度起来运行时，调度器又负责把 g 对象的成员变量所保存的寄存器值恢复到 CPU 的寄存器。
 
