@@ -241,10 +241,80 @@ func main() {
 	}
 }
 ```
-需要说明的是，上面的代码并没有明确关闭 dataCh。在 Go 语言中，对于一个 channel，如果最终没有任何 goroutine 引用它，不管 channel 有没有被关闭，最终都会被 gc 回收。所以，在这种情形下，所谓的优雅地关闭 channel 就是不关闭 channel，让 gc 代劳。
+需要说明的是，上面的代码并没有明确关闭 dataCh。在 Go 语言中，对于一个 channel，如果最终没有任何 goroutine 引用它，不管 channel 有没有被关闭，最终都会被 gc 回收。所以，在这种情形下，**所谓的优雅地关闭 channel 就是不关闭 channel**，让 gc 代劳。
 
 最后一种情况，这里有 M 个 receiver，如果直接还是采取第 3 种解决方案，由 receiver 直接关闭 stopCh 的话，就会重复关闭一个 channel，导致 panic。因此需要增加一个中间人，M 个 receiver 都向它发送关闭 dataCh 的“请求”，中间人收到第一个请求后，就会直接下达关闭 dataCh 的指令（通过关闭 stopCh，这时就不会发生重复关闭的情况，因为 stopCh 的发送方只有中间人一个）。另外，这里的 N 个 sender 也可以向中间人发送关闭 dataCh 的请求。
 
+```go
+package main
+
+import (
+	"fmt"
+	"sync"
+	"time"
+)
+
+func main() {
+	dataCh := make(chan int, 10)
+	stopChan := make(chan struct{}) // 用于通知所有sender停止
+	var wg sync.WaitGroup
+
+	// 安全关闭函数
+	closeDataCh := func() {
+		select {
+		case <-stopChan: // 已经关闭
+		default:
+			close(stopChan) // 通知所有sender停止
+		}
+	}
+
+	// 启动sender
+	for i := 0; i < 3; i++ {
+		wg.Add(1)
+		go func(id int) {
+			defer wg.Done()
+			for j := 0; ; j++ {
+				value := id*1000 + j
+				select {
+				case dataCh <- value:
+					fmt.Printf("sender %d sent: %d\n", id, value)
+				case <-stopChan: // 收到停止信号
+					fmt.Printf("sender %d received stop signal\n", id)
+					return
+				}
+			}
+		}(i)
+	}
+
+	// 启动receiver
+	for i := 0; i < 2; i++ {
+		wg.Add(1)
+		go func(id int) {
+			defer wg.Done()
+			for {
+				select {
+				case data, ok := <-dataCh:
+					if !ok {
+						fmt.Printf("receiver %d: dataCh closed\n", id)
+						return
+					}
+					fmt.Printf("receiver %d received: %d\n", id, data)
+					// 达到条件时触发关闭流程
+					if data > 100 {
+						fmt.Printf("receiver %d detected data > %d, initiating shutdown\n", id, maxData)
+						closeDataCh()
+					}
+				case <-stopChan:
+					fmt.Printf("receiver %d received stop signal\n", id)
+					return
+				}
+			}
+		}(i)
+	}
+	
+	wg.Wait()
+}
+```
 
 ## Channel应用
 ### 停止信号

@@ -41,7 +41,7 @@ type hmap struct {
 	count     int // 元素个数，调用 len(map) 时，直接返回此值
 	flags     uint8
 	B         uint8  // buckets 的对数 log_2
-	noverflow uint16 // overflow 的 bucket 近似数，做扩容决策
+	noverflow uint16 // overflow 的 bucket 近似数，做扩容决策II的判断
 	hash0     uint32 // hash seed
 
 	buckets    unsafe.Pointer // 指向 buckets 数组，大小为 2^B，如果元素个数为0，就为 nil
@@ -173,6 +173,113 @@ mapassign 有一个系列的函数，根据 key 类型的不同，编译器会�
 * 在正式安置 key 之前，还要检查 map 的状态，看它是否需要进行扩容。如果满足扩容的条件，就主动触发一次扩容操作。
 * 最后，会更新 map 相关的值，如果是插入新 key，map 的元素数量字段 count 值会加 1；在函数之初设置的 hashWriting 写标志flag清零。
 
+```go
+func mapassign(t *maptype, h *hmap, key unsafe.Pointer) unsafe.Pointer {
+	if h == nil {
+		panic(plainError("assignment to entry in nil map"))
+	}
+	...
+	if h.flags&hashWriting != 0 {
+		fatal("concurrent map writes")
+	}
+	hash := t.Hasher(key, uintptr(h.hash0))
+
+	// Set hashWriting after calling t.hasher, since t.hasher may panic,
+	// in which case we have not actually done a write.
+	h.flags ^= hashWriting
+
+	if h.buckets == nil {
+		h.buckets = newobject(t.Bucket) // newarray(t.Bucket, 1)
+	}
+
+again:
+	bucket := hash & bucketMask(h.B)
+	if h.growing() {
+		growWork(t, h, bucket)
+	}
+	b := (*bmap)(add(h.buckets, bucket*uintptr(t.BucketSize)))
+	top := tophash(hash)
+
+	var inserti *uint8
+	var insertk unsafe.Pointer
+	var elem unsafe.Pointer
+bucketloop:
+	for {
+		for i := uintptr(0); i < abi.OldMapBucketCount; i++ {
+			if b.tophash[i] != top {
+				if isEmpty(b.tophash[i]) && inserti == nil {
+					inserti = &b.tophash[i]
+					insertk = add(unsafe.Pointer(b), dataOffset+i*uintptr(t.KeySize))
+					elem = add(unsafe.Pointer(b), dataOffset+abi.OldMapBucketCount*uintptr(t.KeySize)+i*uintptr(t.ValueSize))
+				}
+				if b.tophash[i] == emptyRest {
+					break bucketloop
+				}
+				continue
+			}
+			k := add(unsafe.Pointer(b), dataOffset+i*uintptr(t.KeySize))
+			if t.IndirectKey() {
+				k = *((*unsafe.Pointer)(k))
+			}
+			if !t.Key.Equal(key, k) {
+				continue
+			}
+			// already have a mapping for key. Update it.
+			if t.NeedKeyUpdate() {
+				typedmemmove(t.Key, k, key)
+			}
+			elem = add(unsafe.Pointer(b), dataOffset+abi.OldMapBucketCount*uintptr(t.KeySize)+i*uintptr(t.ValueSize))
+			goto done
+		}
+		ovf := b.overflow(t)
+		if ovf == nil {
+			break
+		}
+		b = ovf
+	}
+
+	// Did not find mapping for key. Allocate new cell & add entry.
+
+	// If we hit the max load factor or we have too many overflow buckets,
+	// and we're not already in the middle of growing, start growing.
+	if !h.growing() && (overLoadFactor(h.count+1, h.B) || tooManyOverflowBuckets(h.noverflow, h.B)) {
+		hashGrow(t, h)
+		goto again // Growing the table invalidates everything, so try again
+	}
+
+	if inserti == nil {
+		// The current bucket and all the overflow buckets connected to it are full, allocate a new one.
+		newb := h.newoverflow(t, b)
+		inserti = &newb.tophash[0]
+		insertk = add(unsafe.Pointer(newb), dataOffset)
+		elem = add(insertk, abi.OldMapBucketCount*uintptr(t.KeySize))
+	}
+
+	// store new key/elem at insert position
+	if t.IndirectKey() {
+		kmem := newobject(t.Key)
+		*(*unsafe.Pointer)(insertk) = kmem
+		insertk = kmem
+	}
+	if t.IndirectElem() {
+		vmem := newobject(t.Elem)
+		*(*unsafe.Pointer)(elem) = vmem
+	}
+	typedmemmove(t.Key, insertk, key)
+	*inserti = top
+	h.count++
+
+done:
+	if h.flags&hashWriting == 0 {
+		fatal("concurrent map writes")
+	}
+	h.flags &^= hashWriting
+	if t.IndirectElem() {
+		elem = *((*unsafe.Pointer)(elem))
+	}
+	return elem
+}
+```
 
 ## Map删除
 
@@ -191,7 +298,7 @@ mapassign 有一个系列的函数，根据 key 类型的不同，编译器会�
 count 就是 map 的元素个数，2^B 表示 bucket 数量。        
 
 ### 扩容时机
-再来说触发 map 扩容的时机：在向 map 插入新 key 的时候，会进行条件检测，符合下面这 2 个条件其中之一，就会触发扩容：
+再来说触发 map 扩容的时机：在向 map **插入(mapassign)** 新 key 的时候，会进行条件检测，符合下面这 2 个条件其中之一，就会触发扩容：
 1. 装载因子超过阈值，源码里定义的阈值是 6.5。
 2. overflow 的 bucket 数量过多：当 B 小于 15，也就是 bucket 总数 2^B 小于 2^15 时，如果 overflow 的 bucket 数量超过 2^B；当 B >= 15，也就是 bucket 总数 2^B 大于等于 2^15，如果 overflow 的 bucket 数量超过 2^15。
 
@@ -201,11 +308,11 @@ if !h.growing() && (overLoadFactor(int64(h.count), h.B) || tooManyOverflowBucket
 }
 ```
 
-第 1 点：我们知道，每个 bucket 有 8 个空位，在没有溢出，且所有的桶都装满了的情况下，装载因子算出来的结果是 8。因此当装载因子超过 6.5 时，表明很多 bucket 都快要装满了，查找效率和插入效率都变低了。在这个时候进行扩容是有必要的。
+**第 1 点**：我们知道，每个 bucket 有 8 个空位，在没有溢出，且所有的桶都装满了的情况下，装载因子算出来的结果是 8。因此当装载因子超过 6.5 时，表明很多 bucket 都快要装满了，查找效率和插入效率都变低了。在这个时候进行扩容是有必要的。
 
 **扩容策略**：将 B 加 1，bucket 最大数量（2^B）直接变成原来 bucket 数量的 2 倍。于是，就有新老 bucket 了。注意，这时候元素都在老 bucket 里，还没迁移到新的 bucket 来。而且，新 bucket 只是最大数量变为原来最大数量（2^B）的 2 倍（2^B * 2）
 
-第 2 点：是对第 1 点的补充。就是说在装载因子比较小的情况下，这时候 map 的查找和插入效率也很低，而第 1 点识别不出来这种情况。表面现象就是计算装载因子的分子比较小，即 map 里元素总数少，但是 bucket 数量多（真实分配的 bucket 数量多，包括大量的 overflow bucket）。
+**第 2 点**：是对第 1 点的补充。就是说在装载因子比较小的情况下，这时候 map 的查找和插入效率也很低，而第 1 点识别不出来这种情况。表面现象就是计算装载因子的分子比较小，即 map 里元素总数少，但是 bucket 数量多（真实分配的 bucket 数量多，包括大量的 overflow bucket）。
 不难想像造成这种情况的原因：不停地插入、删除元素。先插入很多元素，导致创建了很多 bucket，但是装载因子达不到第 1 点的临界值，未触发扩容来缓解这种情况。之后，删除元素降低元素总数量，再插入很多元素，导致创建很多的 overflow bucket，但就是不会触犯第 1 点的规定，你能拿我怎么办？overflow bucket 数量太多，导致 key 会很分散，查找插入效率低得吓人，因此出台第 2 点规定。这就像是一座空城，房子很多，但是住户很少，都分散了，找起人来很困难。
 
 **扩容策略**：解决办法就是开辟一个新 bucket 空间，将老 bucket 中的元素移动到新 bucket，使得同一个 bucket 中的 key 排列地更紧密。这样，原来，在 overflow bucket 中的 key 可以移动到 bucket 中来。结果是节省空间，提高 bucket 利用率，map 的查找和插入效率自然就会提升。
@@ -370,6 +477,24 @@ HashMap 扩容时（如从 16→32），原有元素需要重新计算索引。�
   若为 0，则新索引 = 原索引；
   若为 1，则新索引 = 原索引 + 旧容量。
   无需重新计算哈希值，效率极高。
+
+### 可以对map的元素取地址吗
+
+无法对 map 的 key 或 value 进行取址。
+```go
+package main
+
+import "fmt"
+
+func main() {
+	m := make(map[string]int)
+
+	fmt.Println(&m["qcrao"])
+}
+
+// ./main.go:8:14: cannot take the address of m["qcrao"]
+```
+如果通过其他 hack 的方式，例如 unsafe.Pointer 等获取到了 key 或 value 的地址，也不能长期持有，因为一旦发生扩容，key 和 value 的位置就会改变，之前保存的地址也就失效了。
 
 ## 参考
 https://golang.design/go-questions/map/principal/
