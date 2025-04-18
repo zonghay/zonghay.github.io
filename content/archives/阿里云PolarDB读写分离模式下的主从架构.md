@@ -11,7 +11,8 @@ tags: # 标签
 description: ""
 weight:
 slug: ""
-draft: false # 是否为草稿
+draft: true # 是否为草稿
+publishDate: 2026-04-17T14:56:11+08:00
 comments: true # 本页面是否显示评论
 mermaid: true #是否开启mermaid
 showToc: true # 显示目录
@@ -32,7 +33,13 @@ cover:
 大型服务架构往往对于RDS数据库的高并发、高可用和数据一致性有着严格要求，本文将介绍实际项目中使用阿里云PolarDB MySQL版本搭建满足上述要求的RDS数据库的经验。
 ![polar_architecture.png](/images/Mysql/polar_architecture.png)
 
-## 主从备份
+## 高可用主从集群
+
+通常情况下我们可以选择 **虚拟IP（VIP）+ Keepalived** 和 **MHA（Master High Availability）** 在专有网络内来自行搭建高可用Mysql主从集群，并在主节点故障时自动进行主从切换。
+
+
+基于AWS VPC内搭建高可用Mysql集群
+
 
 热备切换：连接/事务不中断，短暂阻塞5~10秒
 

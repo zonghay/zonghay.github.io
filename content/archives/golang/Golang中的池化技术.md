@@ -12,6 +12,7 @@ weight:
 slug: ""
 hidden: true
 draft: true # 是否为草稿
+publishDate: 2026-04-17T14:56:11+08:00
 comments: true # 本页面是否显示评论
 mermaid: true #是否开启mermaid
 showToc: true # 显示目录
@@ -22,7 +23,6 @@ hideSummary: false
 ShowWordCount: true
 ShowBreadCrumbs: true #顶部显示路径
 cover:
-    hidden: true
     image: "" #图片路径例如：posts/tech/123/123.png
     zoom: # 图片大小，例如填写 50% 表示原图像的一半大小
     caption: "" #图片底部描述
