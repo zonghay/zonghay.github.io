@@ -66,6 +66,12 @@ func main() {
     x := append(s, 11)
     y := append(s, 12) // y := append(s,12)。这里s的容量还是4，长度3，所以append 12会写入到第四个位置，覆盖原来的11，变为12。此时y的底层数组是[5,7,9,12]，长度4。而x的底层数组也被修改了，因为x和y共享同一个底层数组。所以x的值现在也是[5,7,9,12]。
     fmt.Println(s, x, y)
+	
+	// 示例2
+    src := []int{1, 2, 3}
+    _ = append(src[:0], src[1:]...)
+	println(src)
+    // [2, 2, 3]
 }
 // output: [5 7 9] [5 7 9 12] [5 7 9 12]
 ```
@@ -158,6 +164,27 @@ func main() {
     fmt.Println("src:", src)          // [1 2 1 2 3]
 }
 ```
+
+## sort.Slice踩坑
+
+```go
+// nums=[2,3,1]
+var tmp = nums[1:]
+sort.Slice(tmp, func(x, y int) bool {
+	return tmp[x] < tmp[y]
+})
+```
+
+```go
+// nums=[2,3,1]
+sort.Slice(nums[1:], func(x, y int) bool {
+	return nums[x] < nums[y]
+})
+```
+
+上面的两段代码基本一致，但第一段运行后nums数组依然是```[2,3,1]```，第二段代码符合预期，执行后nums为```[2,1,3]```，想一想是为什么？
+
+
 
 ## 参考
 [https://golang.design/go-questions/slice/vs-array/](https://golang.design/go-questions/slice/vs-array/)
